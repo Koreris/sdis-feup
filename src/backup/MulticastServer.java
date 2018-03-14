@@ -1,19 +1,23 @@
 package backup;
 import java.net.*;
-import java.rmi.RemoteException;
+import java.rmi.AlreadyBoundException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.io.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-public class MulticastServer implements RMI_backup_service
+public class MulticastServer
 {
 	private String id;
 	private String protocol;
 	private String access_point;
 	private String control_address;
 	private String control_port;
-	private ControlChannelListener control_thread;
-	private DataChannelListener data_thread;
+	protected ControlChannelListener control_thread;
+	protected DataChannelListener data_thread;
 	protected enum ChannelState{SEND_PUTCHUNK,NEUTRAL,BACKUP_WAIT};
 	
 	public MulticastServer(String ident, String proto, String access_point) {
@@ -24,7 +28,7 @@ public class MulticastServer implements RMI_backup_service
 		// TODO Auto-generated constructor stub
 	}
 
-	private static class ControlChannelListener implements Runnable
+	protected static class ControlChannelListener implements Runnable
 	{
 		private MulticastSocket socket;
 		private InetAddress	control_adr;
@@ -36,7 +40,8 @@ public class MulticastServer implements RMI_backup_service
 			socket = new MulticastSocket(8888);
 			InetAddress mcast_addr = InetAddress.getByName("239.0.0.0");
 			socket.joinGroup(mcast_addr);
-			control_pool = new ThreadPoolExecutor(100, 500, 10, TimeUnit.SECONDS, null);
+			LinkedBlockingQueue<Runnable> queue= new LinkedBlockingQueue<Runnable>();
+			control_pool = new ThreadPoolExecutor(100, 500, 10, TimeUnit.SECONDS, queue);
 		}
 
 		public void run()
@@ -48,7 +53,7 @@ public class MulticastServer implements RMI_backup_service
 		}
 	}
 
-	private static class DataChannelListener implements Runnable
+	protected static class DataChannelListener implements Runnable
 	{
 		private MulticastSocket socket;
 		private InetAddress data_adr;
@@ -64,15 +69,26 @@ public class MulticastServer implements RMI_backup_service
 			InetAddress mcast_addr = InetAddress.getByName("239.0.0.1");
 			socket.joinGroup(mcast_addr);
 			data_state=ChannelState.NEUTRAL;
-			data_pool = new ThreadPoolExecutor(100, 500, 10, TimeUnit.SECONDS, null);
+			LinkedBlockingQueue<Runnable> queue= new LinkedBlockingQueue<Runnable>();
+			data_pool = new ThreadPoolExecutor(100, 500, 10, TimeUnit.SECONDS, queue);
 		}
 
 		public void run()
 		{
 			while(true)
 			{
+				switch(data_state) {
+				case SEND_PUTCHUNK:
+					System.out.println("SENDING PUTCHUNK");
+					break;
+				case NEUTRAL:
+					break;
+				case BACKUP_WAIT:
+					break;
+				default:
+					break;
 				
-	
+				}
 			}
 		}
 		
@@ -88,18 +104,18 @@ public class MulticastServer implements RMI_backup_service
 		new Thread(data_thread).start();
 	}
 	
-	public static void main(String[] args) throws IOException 
+	public static void main(String[] args) throws IOException, AlreadyBoundException 
 	{
 		MulticastServer serv = new MulticastServer();
 		serv.control_thread=new ControlChannelListener();
 		serv.data_thread=new DataChannelListener();
 		serv.startup();
-	}
-
-	@Override
-	public String backup(String filename, int replication_degree) throws RemoteException {
-		this.data_thread.initiate_backup(filename,replication_degree);
-		return null;
+		ServerRemoteObject obj = new ServerRemoteObject(serv);
+		RMIBackup stub = (RMIBackup) UnicastRemoteObject.exportObject(obj, 0);
+		
+		// Bind the remote object's stub in the registry
+        Registry registry = LocateRegistry.getRegistry();
+        registry.bind("RMIBackup", stub);
 	}
 
 }
