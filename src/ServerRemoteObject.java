@@ -1,5 +1,3 @@
-package backup;
-
 import java.rmi.RemoteException;
 
 public class ServerRemoteObject implements RMIBackup {
