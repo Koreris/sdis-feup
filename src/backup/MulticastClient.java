@@ -20,7 +20,7 @@ public class MulticastClient
 			 System.out.println("Usage: <RMI object> <sub_protocol> <opnd_1> [opnd_2(replication degree on backup)]");
 		 }
 			 
-		 Registry registry = LocateRegistry.getRegistry("localhost");
+		 Registry registry = LocateRegistry.getRegistry("127.0.0.1",1098);
          RMIBackup stub = (RMIBackup) registry.lookup(args[0]);
          String response = stub.backup(args[2], Integer.parseInt(args[3]));
          printCommand(response);

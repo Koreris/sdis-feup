@@ -21,8 +21,10 @@ public class MulticastServer
 	protected DataChannelListener data_thread;
 	protected enum ChannelState{SEND_PUTCHUNK,NEUTRAL,BACKUP_WAIT};
 	
-	public MulticastServer(String ident, String proto, String access_point) {
-		
+	public MulticastServer(String ident, String proto, String ap) {
+		id=ident;
+		protocol=proto;
+		access_point=ap;
 	}
 	
 	public MulticastServer() {
@@ -107,7 +109,7 @@ public class MulticastServer
 	
 	public static void main(String[] args) throws IOException, AlreadyBoundException 
 	{
-		MulticastServer serv = new MulticastServer();
+		MulticastServer serv = new MulticastServer(args[0],args[1],args[2]);
 		serv.control_thread=new ControlChannelListener();
 		serv.data_thread=new DataChannelListener();
 		serv.startup();
@@ -115,8 +117,9 @@ public class MulticastServer
 		RMIBackup stub = (RMIBackup) UnicastRemoteObject.exportObject(obj, 0);
 		
 		// Bind the remote object's stub in the registry
-        Registry registry = LocateRegistry.getRegistry();
-        registry.bind("RMIBackup", stub);
+		
+        Registry registry = LocateRegistry.createRegistry(1098);
+        registry.bind(serv.access_point, stub);
 	}
 
 }
