@@ -115,10 +115,14 @@ public class MulticastServer
 		serv.startup();
 		ServerRemoteObject obj = new ServerRemoteObject(serv);
 		RMIBackup stub = (RMIBackup) UnicastRemoteObject.exportObject(obj, 0);
-		
+		Registry registry;
 		// Bind the remote object's stub in the registry
-		
-        Registry registry = LocateRegistry.createRegistry(1098);
+		try {
+			registry = LocateRegistry.createRegistry(1098);
+		}
+		catch(Exception e) {
+			registry = LocateRegistry.getRegistry(1098);
+		}
         registry.bind(serv.access_point, stub);
 	}
 
