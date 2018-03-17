@@ -10,8 +10,9 @@ public class ServerRemoteObject implements RMIBackup {
 	}
 	
 	@Override
-	public String backup(String filename, int replication_degree) throws RemoteException {
-		peer.data_thread.initiate_backup(filename,replication_degree);
+	public String backup(String filename, int replication_degree) throws RemoteException 
+	{
+		peer.data_thread.initiateBackup(filename,replication_degree);
 		return "Putchunk sent";
 	}
 

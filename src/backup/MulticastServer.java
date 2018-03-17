@@ -7,10 +7,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.io.*;
-import java.util.StringTokenizer;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 public class MulticastServer
 {
@@ -21,31 +17,34 @@ public class MulticastServer
 	protected Registry rmi_registry;
 	protected ControlChannelListener control_thread;
 	protected DataChannelListener data_thread;
-	protected enum ChannelState{SEND_PUTCHUNK,NEUTRAL,BACKUP_WAIT};
 	
-	
-	public MulticastServer(String ident, String proto, String ap) throws IOException, AlreadyBoundException {
+	public MulticastServer(String ident, String proto, String ap) throws IOException, AlreadyBoundException 
+	{
 		id=ident;
 		protocol=proto;
 		access_point=ap;
 		control_thread=new ControlChannelListener();
-		data_thread=new DataChannelListener();
-		initialize_rmi();
+		data_thread=new DataChannelListener(id);
+		initializeRMI();
 	}
 	
-	private void startup() {
+	private void startUp() 
+	{
 		new Thread(control_thread).start();
 		new Thread(data_thread).start();
 	}
 	
-	private void initialize_rmi() throws RemoteException, AlreadyBoundException {
+	private void initializeRMI() throws RemoteException, AlreadyBoundException 
+	{
 		rmi_object = new ServerRemoteObject(this);
 		RMIBackup stub = (RMIBackup) UnicastRemoteObject.exportObject(rmi_object, 0);
 		// Bind the remote object's stub in the registry
-		try {
+		try 
+		{
 			rmi_registry = LocateRegistry.createRegistry(1098);
 		}
-		catch(Exception e) {
+		catch(Exception e) 
+		{
 			rmi_registry = LocateRegistry.getRegistry(1098);
 		}
         rmi_registry.bind(access_point, stub);
@@ -54,7 +53,7 @@ public class MulticastServer
 	public static void main(String[] args) throws IOException, AlreadyBoundException 
 	{
 		MulticastServer serv = new MulticastServer(args[0],args[1],args[2]);
-		serv.startup();
+		serv.startUp();
 		
 	}
 
