@@ -17,6 +17,7 @@ public class MulticastServer
 	private String access_point;
 	private String control_address;
 	private String control_port;
+	protected ServerRemoteObject rmi_object;
 	protected ControlChannelListener control_thread;
 	protected DataChannelListener data_thread;
 	protected enum ChannelState{SEND_PUTCHUNK,NEUTRAL,BACKUP_WAIT};
@@ -39,12 +40,12 @@ public class MulticastServer
 		private ThreadPoolExecutor control_pool;
 
 		public ControlChannelListener() throws IOException 
-		{
+		{	
 			socket = new MulticastSocket(8888);
 			InetAddress mcast_addr = InetAddress.getByName("239.0.0.0");
 			socket.joinGroup(mcast_addr);
 			LinkedBlockingQueue<Runnable> queue= new LinkedBlockingQueue<Runnable>();
-			control_pool = new ThreadPoolExecutor(100, 500, 10, TimeUnit.SECONDS, queue);
+			control_pool = new ThreadPoolExecutor(10, 20, 10, TimeUnit.SECONDS, queue);
 		}
 
 		public void run()
@@ -73,7 +74,7 @@ public class MulticastServer
 			socket.joinGroup(mcast_addr);
 			data_state=ChannelState.NEUTRAL;
 			LinkedBlockingQueue<Runnable> queue= new LinkedBlockingQueue<Runnable>();
-			data_pool = new ThreadPoolExecutor(100, 500, 10, TimeUnit.SECONDS, queue);
+			data_pool = new ThreadPoolExecutor(10, 20, 10, TimeUnit.SECONDS, queue);
 		}
 
 		public void run()
@@ -99,6 +100,7 @@ public class MulticastServer
 			data_state=ChannelState.SEND_PUTCHUNK;
 			rep_degree=rep_deg;
 			file_to_backup=filename;
+			System.out.println("Received putchunk!");
 		}
 	}
 	
@@ -113,8 +115,8 @@ public class MulticastServer
 		serv.control_thread=new ControlChannelListener();
 		serv.data_thread=new DataChannelListener();
 		serv.startup();
-		ServerRemoteObject obj = new ServerRemoteObject(serv);
-		RMIBackup stub = (RMIBackup) UnicastRemoteObject.exportObject(obj, 0);
+		serv.rmi_object = new ServerRemoteObject(serv);
+		RMIBackup stub = (RMIBackup) UnicastRemoteObject.exportObject(serv.rmi_object, 0);
 		Registry registry;
 		// Bind the remote object's stub in the registry
 		try {
