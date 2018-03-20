@@ -18,6 +18,11 @@ class DataChannelListener implements Runnable
 	private int port;
 	private int rep_degree;
 	private String file_to_backup;
+	private int file_size;
+	private int final_chunk_size;
+	private int sent_size;
+	private int total_chunks;
+	private int sent_chunks;
 	private ThreadPoolExecutor data_pool;
 	private String server_id; 
 	final static int MAX_PACKET_SIZE=64096;
@@ -47,13 +52,28 @@ class DataChannelListener implements Runnable
 		}
 	}
 	
-	public void initiateBackup(String filename,int rep_deg) 
+	public void initiateBackup(String filename,int rep_deg)  
 	{
 		rep_degree=rep_deg;
 		file_to_backup=filename;
+		analyzeFile();
+		byte[] data = null;
 		//send putchunk
-		byte[] header=CreateMessages.createHeader("PUTCHUNK", "1.0", server_id, filename, 0, rep_deg);
-		sendMessage(header);
+		byte[] header=CreateMessages.createHeader("PUTCHUNK", "1.0", server_id, filename, sent_chunks, rep_deg);
+		try {
+			data=makeChunk();
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+			return;
+		}
+		byte[] combined = new byte[header.length + data.length];
+
+		for (int i = 0; i < combined.length; ++i)
+		{
+		    combined[i] = i < header.length ? header[i] : data[i - header.length];
+		}
+		sendMessage(combined);
 	}
 	
 	public void sendMessage(byte[] msg)
@@ -67,19 +87,43 @@ class DataChannelListener implements Runnable
 		}
 	}
 	
-	public void sendFile(String FILE_TO_SEND) throws IOException {
-		 FileInputStream fis = null;
-		    BufferedInputStream bis = null;
-		   
-
+	public void analyzeFile() {
           // send file
-          File myFile = new File (FILE_TO_SEND);
-          byte [] mybytearray  = new byte [(int)myFile.length()];
-          fis = new FileInputStream(myFile);
-          bis = new BufferedInputStream(fis);
-          bis.read(mybytearray,0,mybytearray.length);
-          
-          bis.close();
+          File my_file = new File (file_to_backup);
+          file_size=(int)my_file.length();
+          total_chunks=file_size/64000;
+          final_chunk_size=file_size-(total_chunks-1)*64000;
+          if((file_size % 64000)==0) {
+        	  total_chunks+=1;
+        	  final_chunk_size=0;
+          }	 
+	}
+	
+	public byte[] makeChunk() throws IOException {
+        FileInputStream fis = null;
+		BufferedInputStream bis = null;
+		byte[] file_data;
+		File my_file = new File (file_to_backup);
+		fis = new FileInputStream(my_file);
+	    bis = new BufferedInputStream(fis);
+		if(sent_chunks<total_chunks) {
+			file_data= new byte [64000];
+	        bis.read(file_data,sent_chunks*64000,64000); 
+	        bis.close();
+	        fis.close();
+		}
+		else {
+			file_data= new byte [final_chunk_size];
+			bis.read(file_data,sent_chunks*64000,final_chunk_size); 
+	        bis.close();
+	        fis.close();
+		}
+        return file_data;
+	}
+	
+	public void updateBackupState(boolean next) {
+		if(next)
+			sent_chunks++;
 	}
 	
 	private class DataChannelPacketHandler implements Runnable 
