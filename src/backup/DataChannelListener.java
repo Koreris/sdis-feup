@@ -78,6 +78,7 @@ class DataChannelListener implements Runnable
 	
 	public void sendMessage(byte[] msg)
 	{
+		System.out.println("Packet length: "+msg.length);
 		DatagramPacket packet = new DatagramPacket(msg, 0, msg.length,data_adr,7777);
 		try {
 			socket.send(packet);
@@ -91,8 +92,14 @@ class DataChannelListener implements Runnable
           // send file
           File my_file = new File (file_to_backup);
           file_size=(int)my_file.length();
+          
           total_chunks=file_size/64000;
+          
           final_chunk_size=file_size-(total_chunks-1)*64000;
+          if(total_chunks==0) {
+        	  total_chunks++;
+        	  final_chunk_size=0;
+          }
           if((file_size % 64000)==0) {
         	  total_chunks+=1;
         	  final_chunk_size=0;
@@ -107,8 +114,14 @@ class DataChannelListener implements Runnable
 		fis = new FileInputStream(my_file);
 	    bis = new BufferedInputStream(fis);
 		if(sent_chunks<total_chunks) {
-			file_data= new byte [64000];
-	        bis.read(file_data,sent_chunks*64000,64000); 
+			if(file_size<64000) {
+				file_data= new byte [file_size];
+				 bis.read(file_data,sent_chunks*64000,file_size); 
+			}
+			else{
+				file_data= new byte [64000];
+				bis.read(file_data,sent_chunks*64000,64000); 
+			}
 	        bis.close();
 	        fis.close();
 		}
@@ -146,6 +159,7 @@ class DataChannelListener implements Runnable
 			System.out.println(headerComponents[1]);
 			System.out.println(headerComponents[2]);
 			System.out.println(headerComponents[3]);
+			System.out.print(lines[2].length());
 		}
 		
 	}
