@@ -25,8 +25,8 @@ class DataChannelListener implements Runnable
 	public DataChannelListener(String serverID) throws IOException 
 	{
 		socket = new MulticastSocket(7777);	
-		InetAddress mcast_addr = InetAddress.getByName("239.0.0.1");
-		socket.joinGroup(mcast_addr);
+		data_adr = InetAddress.getByName("239.0.0.1");
+		socket.joinGroup(data_adr);
 		LinkedBlockingQueue<Runnable> queue= new LinkedBlockingQueue<Runnable>();
 		data_pool = new ThreadPoolExecutor(10, 20, 10, TimeUnit.SECONDS, queue);
 		server_id=serverID;
@@ -53,11 +53,12 @@ class DataChannelListener implements Runnable
 		file_to_backup=filename;
 		//send putchunk
 		byte[] header=CreateMessages.createHeader("PUTCHUNK", "1.0", server_id, filename, 0, rep_deg);
+		sendMessage(header);
 	}
 	
 	public void sendMessage(byte[] msg)
 	{
-		DatagramPacket packet = new DatagramPacket(msg, msg.length,954);
+		DatagramPacket packet = new DatagramPacket(msg, 0, msg.length,data_adr,7777);
 		try {
 			socket.send(packet);
 		} catch (IOException e) {
@@ -95,7 +96,12 @@ class DataChannelListener implements Runnable
 			String packetString = new String(data.getData(),0,data.getLength());
 			String[] lines = packetString.split(System.getProperty("line.separator"));
 			String header = lines[0];
-			System.out.println(lines.length);
+			String[] headerComponents = header.split(" ");
+			
+			System.out.println(headerComponents[0]);
+			System.out.println(headerComponents[1]);
+			System.out.println(headerComponents[2]);
+			System.out.println(headerComponents[3]);
 		}
 		
 	}
