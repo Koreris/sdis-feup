@@ -3,6 +3,7 @@ package backup;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
@@ -20,7 +21,6 @@ class DataChannelListener implements Runnable
 	private String file_to_backup;
 	private int file_size;
 	private int final_chunk_size;
-	private int sent_size;
 	private int total_chunks;
 	private int sent_chunks;
 	private ThreadPoolExecutor data_pool;
@@ -59,7 +59,7 @@ class DataChannelListener implements Runnable
 		analyzeFile();
 		byte[] data = null;
 		//send putchunk
-		byte[] header=CreateMessages.createHeader("PUTCHUNK", "1.0", server_id, filename, sent_chunks, rep_deg);
+		byte[] header=CreateMessages.createHeader("PUTCHUNK", "1.0", server_id, "fileID", sent_chunks, rep_deg);
 		try {
 			data=makeChunk();
 		}
@@ -155,11 +155,42 @@ class DataChannelListener implements Runnable
 			String header = lines[0];
 			String[] headerComponents = header.split(" ");
 			
-			System.out.println(headerComponents[0]);
-			System.out.println(headerComponents[1]);
-			System.out.println(headerComponents[2]);
-			System.out.println(headerComponents[3]);
+			
+			switch(headerComponents[0]) {
+				case "PUTCHUNK":
+					handlePutchunk(headerComponents,lines[2]);
+					break;
+				default:
+					break;
+			}
+		
 			System.out.print(lines[2].length());
+		}
+
+		private void handlePutchunk(String[] headerComponents, String filedata) {
+			System.out.println(headerComponents[1]); //version
+			System.out.println(headerComponents[2]); //sender
+			System.out.println(headerComponents[3]); // filepath-> supposed to be fileID
+			if(headerComponents[2].equals(server_id))
+				return;
+			System.out.println("Header component: "+headerComponents[2]+" server id: "+server_id);
+			// guardar ficheiro no diretorio headerComponents[3]/headerComponents[4]
+			
+			FileOutputStream out;
+			try {
+				File newfile = new File("/C:/sdis/files/peer2/"+headerComponents[3]+File.separator+headerComponents[4]);
+				newfile.getParentFile().mkdirs(); // correct!
+				if (!newfile.exists()) {
+				    newfile.createNewFile();
+				} 
+				out = new FileOutputStream(newfile);
+				out.write(filedata.getBytes());
+				out.close();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
 		}
 		
 	}
