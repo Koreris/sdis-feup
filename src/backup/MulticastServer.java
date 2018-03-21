@@ -5,6 +5,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.concurrent.ConcurrentHashMap;
 import java.io.*;
 
 public class MulticastServer
@@ -16,14 +17,17 @@ public class MulticastServer
 	protected Registry rmi_registry;
 	protected ControlChannelListener control_thread;
 	protected DataChannelListener data_thread;
+	protected ConcurrentHashMap<String,Integer> records;
+	
 	
 	public MulticastServer(String ident, String proto, String ap) throws IOException, AlreadyBoundException 
 	{
 		id=ident;
 		protocol=proto;
 		access_point=ap;
-		control_thread=new ControlChannelListener();
-		data_thread=new DataChannelListener(id);
+		records = new ConcurrentHashMap<String,Integer>(); //load from file data
+		control_thread=new ControlChannelListener(id,records);
+		data_thread=new DataChannelListener(id,records);
 		initializeRMI();
 	}
 	
