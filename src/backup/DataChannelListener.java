@@ -58,7 +58,7 @@ class DataChannelListener implements Runnable
 		}
 	}
 	
-	public void initiateBackup(String filename,int rep_deg) throws NoSuchAlgorithmException  
+	public void initiateBackup(String filename,int rep_deg) throws NoSuchAlgorithmException, IOException  
 	{
 		rep_degree=rep_deg;
 		file_to_backup=filename;
@@ -67,7 +67,7 @@ class DataChannelListener implements Runnable
 		createPutchunk();
 	}
 	
-	public void createPutchunk() throws NoSuchAlgorithmException {
+	public void createPutchunk() throws NoSuchAlgorithmException, IOException {
 		
 		if(sent_chunks==total_chunks) {
 			System.out.println("Backup over: Sent "+sent_chunks+"/"+total_chunks);

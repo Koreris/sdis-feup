@@ -1,7 +1,14 @@
 package backup;
 
 import java.io.File;
+import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -21,24 +28,27 @@ public abstract class CreateMessages
 	
 	protected static String CRLF = "\r\n";
 
-	public static byte[] createHeader(String msgType, String version, String senderID, String filePath, int chunkNr, int repDeg) 
+	public static byte[] createHeader(String msgType, String version, String senderID, String filePath, int chunkNr, int repDeg) throws IOException 
 	{	
-		File file = new File(filePath);
-		long lastModif = file.lastModified();
-		String tempID=filePath+lastModif;
 		MessageDigest digest;
-		try {
-			digest = MessageDigest.getInstance("SHA-256");
-			byte[] fileID = digest.digest(tempID.getBytes(StandardCharsets.UTF_8));
-			String temp;
-
+		String temp;
+		try 
+		{
 			if (msgType.equals("STORED"))
 			{
-				temp = msgType + " " + version + " " + senderID + " " + fileID + " " + chunkNr + " " + CRLF + CRLF;
+				temp = msgType + " " + version + " " + senderID + " " + filePath + " " + chunkNr + " " + CRLF + CRLF;
+				return temp.getBytes();
 			}
-			else 
-				temp = msgType + " " + version + " " + senderID + " " + fileID + " " + chunkNr + " " + repDeg + CRLF + CRLF;
 			
+			Path file = Paths.get(filePath);
+			BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
+			FileTime creationTime = attr.creationTime();
+			long fileSize = attr.size();
+			String tempID=filePath+creationTime.toString()+fileSize;
+			digest = MessageDigest.getInstance("SHA-256");
+			byte[] fileID = digest.digest(tempID.getBytes(StandardCharsets.UTF_8));
+
+			temp = msgType + " " + version + " " + senderID + " " + fileID + " " + chunkNr + " " + repDeg + CRLF + CRLF;
 			return temp.getBytes(); 
 		} catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block

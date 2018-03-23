@@ -1,5 +1,6 @@
 package backup;
 
+import java.io.IOException;
 import java.rmi.RemoteException;
 import java.security.NoSuchAlgorithmException;
 
@@ -15,7 +16,7 @@ public class ServerRemoteObject implements RMIBackup {
 	{
 		try {
 			peer.data_thread.initiateBackup(filename,replication_degree);
-		} catch (NoSuchAlgorithmException e) {
+		} catch (NoSuchAlgorithmException | IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
