@@ -26,12 +26,10 @@ public abstract class CreateMessages
 		File file = new File(filePath);
 		long lastModif = file.lastModified();
 		String tempID=filePath+lastModif;
-		System.out.println(tempID);
 		MessageDigest digest;
 		try {
 			digest = MessageDigest.getInstance("SHA-256");
 			byte[] fileID = digest.digest(tempID.getBytes(StandardCharsets.UTF_8));
-			
 			String temp;
 
 			if (msgType.equals("STORED"))

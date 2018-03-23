@@ -12,11 +12,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-//TODO -> enviar stored messages no packethandler apos um delay uniformemente distribuido entre 0 e 400ms
 //TODO -> contar o numero de stores para quem fez o backup e para quem faz store dos chunks
 //TODO -> actualizar no control channel -> formato de records para quem faz backup "fileId=chunkId | perceivedRepDegree"
 //TODO -> actualizar no control channel -> formato de records para quem faz store "fileID=chunkID chunkSize | perceivedRepDegree"
-//TODO -> criar sha256 do fileID com filename e size
 //TODO -> parametrizar os servidores com os ips e ports dos canais
 class DataChannelListener implements Runnable
 {
@@ -40,7 +38,7 @@ class DataChannelListener implements Runnable
 		data_adr = InetAddress.getByName("239.0.0.1");
 		socket.joinGroup(data_adr);
 		LinkedBlockingQueue<Runnable> queue= new LinkedBlockingQueue<Runnable>();
-		data_pool = new ThreadPoolExecutor(10, 20, 10, TimeUnit.SECONDS, queue);
+		data_pool = new ThreadPoolExecutor(5, 20, 10, TimeUnit.SECONDS, queue);
 		server_id=serverID;
 		records=rec;
 	}

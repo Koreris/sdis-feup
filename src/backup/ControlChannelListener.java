@@ -1,6 +1,7 @@
 package backup;
 
 import java.io.IOException;
+import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,7 +17,8 @@ class ControlChannelListener implements Runnable
 	private ThreadPoolExecutor control_pool;
 	private ConcurrentHashMap<String,Integer> records;
 	private String server_id;
-
+	final static int MAX_PACKET_SIZE=64096;
+	
 	public ControlChannelListener(String serverid,ConcurrentHashMap<String,Integer> rec) throws IOException 
 	{	
 		socket = new MulticastSocket(8888);
@@ -32,7 +34,18 @@ class ControlChannelListener implements Runnable
 	{
 		while(true)
 		{
-				
+			byte[] buf = new byte[MAX_PACKET_SIZE];
+			DatagramPacket packet = new DatagramPacket(buf, buf.length);
+			try {
+				socket.receive(packet);
+				String data = new String(packet.getData());
+				String[] lines = data.split(System.getProperty("line.separator"));
+				String header = lines[0];
+				System.out.println("Control received: "+ header);
+				//control_pool.execute(new ControlChannelPacketHandler(packet,server_id,records,socket));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 }
