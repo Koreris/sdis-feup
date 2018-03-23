@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 //TODO -> contar o numero de stores para quem fez o backup e para quem faz store dos chunks
 //TODO -> actualizar no control channel -> formato de records para quem faz backup "fileId=chunkId | perceivedRepDegree"
 //TODO -> actualizar no control channel -> formato de records para quem faz store "fileID=chunkID chunkSize | perceivedRepDegree"
-//TODO -> formato de records para quem faz store "fileID=chunkID chunkSize | perceivedRepDegree"
 //TODO -> criar sha256 do fileID com filename e size
 //TODO -> parametrizar os servidores com os ips e ports dos canais
 class DataChannelListener implements Runnable
@@ -53,7 +52,7 @@ class DataChannelListener implements Runnable
 			DatagramPacket packet = new DatagramPacket(buf, buf.length);
 			try {
 				socket.receive(packet);
-				data_pool.execute(new DataChannelPacketHandler(packet,server_id,records));
+				data_pool.execute(new DataChannelPacketHandler(packet,server_id,records,socket));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
