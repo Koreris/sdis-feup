@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -60,7 +61,7 @@ class DataChannelListener implements Runnable
 		}
 	}
 	
-	public void initiateBackup(String filename,int rep_deg)  
+	public void initiateBackup(String filename,int rep_deg) throws NoSuchAlgorithmException  
 	{
 		rep_degree=rep_deg;
 		file_to_backup=filename;
@@ -69,7 +70,7 @@ class DataChannelListener implements Runnable
 		createPutchunk();
 	}
 	
-	public void createPutchunk() {
+	public void createPutchunk() throws NoSuchAlgorithmException {
 		
 		if(sent_chunks==total_chunks) {
 			System.out.println("Backup over: Sent "+sent_chunks+"/"+total_chunks);
@@ -78,7 +79,7 @@ class DataChannelListener implements Runnable
 		
 		byte[] data = null;
 		//send putchunk
-		byte[] header=CreateMessages.createHeader("PUTCHUNK", "1.0", server_id, "fileID", sent_chunks, rep_degree);
+		byte[] header=CreateMessages.createHeader("PUTCHUNK", "1.0", server_id, file_to_backup, sent_chunks, rep_degree);
 		try {
 			data=getFileChunk();
 		}
