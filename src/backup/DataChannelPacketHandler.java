@@ -10,6 +10,8 @@ import java.net.UnknownHostException;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.swing.filechooser.FileSystemView;
+
 public class DataChannelPacketHandler implements Runnable 
 {
 	DatagramPacket data;
@@ -67,7 +69,8 @@ public class DataChannelPacketHandler implements Runnable
 		
 		FileOutputStream out;
 		try {
-			File newfile = new File("/C:/sdis/files/peer2/"+headerComponents[3]+File.separator+headerComponents[4]);
+			File home = FileSystemView.getFileSystemView().getHomeDirectory();
+			File newfile = new File("/"+home.getAbsolutePath()+"/sdis/files/"+server_id+"/"+headerComponents[3]+File.separator+headerComponents[4]);
 			newfile.getParentFile().mkdirs(); // correct!
 			if (!newfile.exists()) {
 			    newfile.createNewFile();

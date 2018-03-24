@@ -12,6 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import javax.swing.filechooser.FileSystemView;
 //TODO -> contar o numero de stores para quem fez o backup e para quem faz store dos chunks
 //TODO -> actualizar no control channel -> formato de records para quem faz backup "fileId=chunkId | perceivedRepDegree"
 //TODO -> actualizar no control channel -> formato de records para quem faz store "fileID=chunkID chunkSize | perceivedRepDegree"
@@ -129,7 +131,8 @@ class DataChannelListener implements Runnable
 	
 	public void analyzeFile() {
           // send file
-          File my_file = new File (file_to_backup);
+		  File home = FileSystemView.getFileSystemView().getHomeDirectory();
+		  File my_file = new File (home.getAbsolutePath()+file_to_backup);
           file_size=(int)my_file.length();
           
           total_chunks=file_size/64000;
@@ -149,7 +152,8 @@ class DataChannelListener implements Runnable
         FileInputStream fis = null;
 		BufferedInputStream bis = null;
 		byte[] file_data;
-		File my_file = new File (file_to_backup);
+		File home = FileSystemView.getFileSystemView().getHomeDirectory();
+		File my_file = new File (home.getAbsolutePath()+file_to_backup);
 		fis = new FileInputStream(my_file);
 	    bis = new BufferedInputStream(fis);
 		if(sent_chunks<total_chunks) {

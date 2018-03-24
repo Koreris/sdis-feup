@@ -12,6 +12,8 @@ import java.nio.file.attribute.FileTime;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import javax.swing.filechooser.FileSystemView;
+
 public abstract class CreateMessages 
 {
 	/*
@@ -39,8 +41,8 @@ public abstract class CreateMessages
 				temp = msgType + " " + version + " " + senderID + " " + filePath + " " + chunkNr + " " + CRLF + CRLF;
 				return temp.getBytes();
 			}
-			
-			Path file = Paths.get(filePath);
+			File home = FileSystemView.getFileSystemView().getHomeDirectory();
+			Path file = Paths.get(home.getAbsolutePath()+filePath);
 			BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
 			FileTime creationTime = attr.creationTime();
 			long fileSize = attr.size();

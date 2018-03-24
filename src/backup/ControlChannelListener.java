@@ -38,11 +38,7 @@ class ControlChannelListener implements Runnable
 			DatagramPacket packet = new DatagramPacket(buf, buf.length);
 			try {
 				socket.receive(packet);
-				String data = new String(packet.getData());
-				String[] lines = data.split(System.getProperty("line.separator"));
-				String header = lines[0];
-				System.out.println("Control received: "+ header);
-				//control_pool.execute(new ControlChannelPacketHandler(packet,server_id,records,socket));
+				control_pool.execute(new ControlChannelPacketHandler(packet,server_id,records,socket));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
