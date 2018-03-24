@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,16 +30,22 @@ public class DataChannelPacketHandler implements Runnable
 	@Override
 	public void run() 
 	{
+		
 		String packetString = new String(data.getData(),0,data.getLength());
+	
 		String[] lines = packetString.split(System.getProperty("line.separator"));
 		String header = lines[0];
+	
 		String[] headerComponents = header.split(" ");
-		
+		byte[] actual_data = new byte[data.getLength()];
+		System.arraycopy(data.getData(), data.getOffset(), actual_data, 0, data.getLength());
+		int filler_length = lines[0].length()+lines[1].length()+4;
+	
 		
 		switch(headerComponents[0]) {
 			case "PUTCHUNK":
 				try {
-					handlePutchunk(headerComponents,lines[2]);
+					handlePutchunk(headerComponents,Arrays.copyOfRange(actual_data, filler_length, actual_data.length));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -49,15 +55,25 @@ public class DataChannelPacketHandler implements Runnable
 		}
 	}
 
-	private void handlePutchunk(String[] headerComponents, String filedata) throws IOException, InterruptedException {
+	private void handlePutchunk(String[] headerComponents, byte[] filedata) throws IOException, InterruptedException {
 	
 		if(headerComponents[2].equals(server_id))
 			return;
+		
+		File home = FileSystemView.getFileSystemView().getHomeDirectory();
+		File chunk = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/"+headerComponents[3]+File.separator+headerComponents[4]);
+		
+		if(chunk.exists()) {
+			System.out.println("I already received this chunk before!");
+			return;
+		}
+		
 		//System.out.println("Header component: "+headerComponents[2]+" server id: "+server_id);
 		//System.out.println("headerComponents[1]); //version
 		//System.out.println(headerComponents[3]); //fileID
 		System.out.println("Received chunkno:"+headerComponents[4]);
 		// guardar ficheiro no diretorio headerComponents[3]/headerComponents[4]
+		
 		byte[] stored = CreateMessages.createHeader("STORED", headerComponents[1], server_id, headerComponents[3], Integer.parseInt(headerComponents[4]),0);
 		InetAddress control_addr = InetAddress.getByName("239.0.0.0");
 		DatagramPacket packet = new DatagramPacket(stored,0,stored.length,control_addr,8888);
@@ -65,18 +81,18 @@ public class DataChannelPacketHandler implements Runnable
 		int delay=delay_gen.nextInt(401);
 		Thread.sleep(delay);
 		socket.send(packet);
-		records.put(headerComponents[3]+"="+headerComponents[4]+" "+filedata.length(), 1);
+		records.put(headerComponents[3]+"="+headerComponents[4]+" "+filedata.length, 1);
 		
 		FileOutputStream out;
 		try {
-			File home = FileSystemView.getFileSystemView().getHomeDirectory();
-			File newfile = new File("/"+home.getAbsolutePath()+"/sdis/files/"+server_id+"/"+headerComponents[3]+File.separator+headerComponents[4]);
+			File newfile = new File("/"+home.getAbsolutePath()+"/sdis/files/"+server_id+"/"+headerComponents[3]+File.separator+headerComponents[4]+".png");
 			newfile.getParentFile().mkdirs(); // correct!
 			if (!newfile.exists()) {
 			    newfile.createNewFile();
 			} 
 			out = new FileOutputStream(newfile);
-			out.write(filedata.getBytes());
+			
+			out.write(filedata);
 			
 			out.close();
 			

@@ -3,6 +3,7 @@ package backup;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
@@ -29,9 +30,12 @@ class DataChannelListener implements Runnable
 	private int final_chunk_size;
 	private int total_chunks;
 	private int sent_chunks;
+	private String fileID;
 	private ThreadPoolExecutor data_pool;
 	private String server_id; 
 	private ConcurrentHashMap<String,Integer> records;
+	FileInputStream fis = null;
+	BufferedInputStream bis = null;
 	final static int MAX_PACKET_SIZE=64096;
 	
 	public DataChannelListener(String serverID,ConcurrentHashMap<String,Integer> rec) throws IOException 
@@ -64,7 +68,7 @@ class DataChannelListener implements Runnable
 	{
 		rep_degree=rep_deg;
 		file_to_backup=filename;
-		records.put(file_to_backup+" fileID", rep_degree);
+		records.put(file_to_backup, rep_degree);
 		analyzeFile();
 		createPutchunk();
 	}
@@ -73,12 +77,20 @@ class DataChannelListener implements Runnable
 		
 		if(sent_chunks==total_chunks) {
 			System.out.println("Backup over: Sent "+sent_chunks+"/"+total_chunks);
+			fis.close();
+			bis.close();
+			fis = null;
+			bis = null;
 			return;
 		}
 		
 		byte[] data = null;
 		//send putchunk
 		byte[] header=CreateMessages.createHeader("PUTCHUNK", "1.0", server_id, file_to_backup, sent_chunks, rep_degree);
+		String headerString = new String(header);
+		String[] headerComponents = headerString.split(" ");
+		fileID = headerComponents[3];
+		
 		try {
 			data=getFileChunk();
 		}
@@ -106,14 +118,12 @@ class DataChannelListener implements Runnable
 		@Override
 		public void run() {
 			try {
+				records.put(fileID+"="+sent_chunks, 0);
 				while(nr_tries<5) {
-					System.out.println("Sending Packet length: "+chunk.length);
 					DatagramPacket packet = new DatagramPacket(chunk, 0, chunk.length,data_adr,7777);
 					socket.send(packet);
-					records.put("fileID="+sent_chunks, 0);
-					
 					Thread.sleep(1000);
-					int perceived_replication_degree=records.get("fileID="+sent_chunks);
+					Integer perceived_replication_degree=records.get(fileID+"="+sent_chunks);
 					if(perceived_replication_degree>=rep_degree) {
 						sent_chunks++;
 						createPutchunk();
@@ -131,49 +141,55 @@ class DataChannelListener implements Runnable
 	
 	public void analyzeFile() {
           // send file
+		
 		  File home = FileSystemView.getFileSystemView().getHomeDirectory();
 		  File my_file = new File (home.getAbsolutePath()+file_to_backup);
           file_size=(int)my_file.length();
+          try {
+				fis = new FileInputStream(my_file);
+				bis = new BufferedInputStream(fis);
+		  } catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+		  }
           
           total_chunks=file_size/64000;
-          
-          final_chunk_size=file_size-(total_chunks-1)*64000;
-          if(total_chunks==0) {
-        	  total_chunks++;
-        	  final_chunk_size=0;
-          }
+          total_chunks++;
+          if(file_size<64000) {
+  			total_chunks=1;
+  			final_chunk_size=file_size;
+  			return;
+  		  }
           if((file_size % 64000)==0) {
         	  total_chunks+=1;
         	  final_chunk_size=0;
-          }	 
+        	  return;
+          }
+    
+          final_chunk_size=file_size-(total_chunks-1)*64000;
+        
+		  
 	}
 	
 	public byte[] getFileChunk() throws IOException {
-        FileInputStream fis = null;
-		BufferedInputStream bis = null;
+        
 		byte[] file_data;
-		File home = FileSystemView.getFileSystemView().getHomeDirectory();
-		File my_file = new File (home.getAbsolutePath()+file_to_backup);
-		fis = new FileInputStream(my_file);
-	    bis = new BufferedInputStream(fis);
-		if(sent_chunks<total_chunks) {
+		
+		if(sent_chunks<total_chunks-1) {
 			if(file_size<64000) {
 				file_data= new byte [file_size];
-				 bis.read(file_data,sent_chunks*64000,file_size); 
+				bis.read(file_data,0,file_size); 
 			}
 			else{
 				file_data= new byte [64000];
-				bis.read(file_data,sent_chunks*64000,64000); 
+				bis.read(file_data,0,64000); 
 			}
-	        bis.close();
-	        fis.close();
 		}
 		else {
 			file_data= new byte [final_chunk_size];
-			bis.read(file_data,sent_chunks*64000,final_chunk_size); 
-	        bis.close();
-	        fis.close();
+			bis.read(file_data,0,final_chunk_size); 
 		}
+		
         return file_data;
 	}
 	
