@@ -22,5 +22,10 @@ public class ServerRemoteObject implements RMIBackup {
 		}
 		return "Putchunk sent";
 	}
+	
+	public String restore(String filename) 
+	{
+		
+	}
 
 }

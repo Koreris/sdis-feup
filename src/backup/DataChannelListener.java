@@ -22,9 +22,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.filechooser.FileSystemView;
-//TODO -> contar o numero de stores para quem fez o backup e para quem faz store dos chunks
-//TODO -> actualizar no control channel -> formato de records para quem faz backup "fileId=chunkId | perceivedRepDegree"
-//TODO -> actualizar no control channel -> formato de records para quem faz store "fileID=chunkID chunkSize | perceivedRepDegree"
+
 //TODO -> parametrizar os servidores com os ips e ports dos canais
 class DataChannelListener implements Runnable
 {
@@ -92,9 +90,11 @@ class DataChannelListener implements Runnable
 		rep_degree=rep_deg;
 		file_to_backup=filename;
 		fileID = createFileID(filename);
-		if(records.containsKey(fileID))
+		if(records.containsKey(file_to_backup+"="+fileID)) {
+			System.out.println("Already backed up this file!");
 			return;
-		records.put(fileID, rep_degree);
+		}
+		records.put(file_to_backup+"="+fileID, rep_degree);
 		analyzeFile();
 		createPutchunk();
 	}
@@ -114,7 +114,7 @@ class DataChannelListener implements Runnable
 		
 		byte[] data = null;
 		//send putchunk
-		byte[] header=CreateMessages.createHeader("PUTCHUNK", "1.0", server_id, file_to_backup, sent_chunks, rep_degree);
+		byte[] header=CreateMessages.createHeader("PUTCHUNK", "1.0", server_id, fileID, sent_chunks, rep_degree);
 		String headerString = new String(header);
 		String[] headerComponents = headerString.split(" ");
 		fileID = headerComponents[3];
@@ -154,13 +154,17 @@ class DataChannelListener implements Runnable
 					socket.send(packet);
 					Thread.sleep(1000);
 					Integer perceived_replication_degree=records.get(fileID+"="+sent_chunks);
-					if(perceived_replication_degree>=rep_degree) {
+					if(perceived_replication_degree>=rep_degree) 
+					{
 						sent_chunks++;
 						createPutchunk();
 						return;
 					}
 					nr_tries++;
 				}
+				sent_chunks++;
+				createPutchunk();
+				return;
 				
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -172,7 +176,8 @@ class DataChannelListener implements Runnable
 	public void analyzeFile() 
 	{
           // send file
-		
+		  System.out.println("Analyzing file!");
+		  sent_chunks=0;
 		  File home = FileSystemView.getFileSystemView().getHomeDirectory();
 		  File my_file = new File (home.getAbsolutePath()+file_to_backup);
           file_size=(int)my_file.length();

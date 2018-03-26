@@ -85,7 +85,7 @@ public class DataChannelPacketHandler implements Runnable
 		
 		FileOutputStream out;
 		try {
-			File newfile = new File("/"+home.getAbsolutePath()+"/sdis/files/"+server_id+"/"+headerComponents[3]+File.separator+headerComponents[4]+".png");
+			File newfile = new File("/"+home.getAbsolutePath()+"/sdis/files/"+server_id+"/"+headerComponents[3]+File.separator+headerComponents[4]);
 			newfile.getParentFile().mkdirs(); // correct!
 			if (!newfile.exists()) {
 			    newfile.createNewFile();

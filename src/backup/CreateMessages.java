@@ -23,7 +23,6 @@ public abstract class CreateMessages
 		}
 
 		temp = msgType + " " + version + " " + senderID + " " + fileID + " " + chunkNr + " " + repDeg + CRLF + CRLF;
-		System.out.println("HEADER LENGTH "+temp.length());
 		return temp.getBytes();
 	}
 

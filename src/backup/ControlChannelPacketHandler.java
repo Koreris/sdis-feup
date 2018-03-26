@@ -44,20 +44,23 @@ public class ControlChannelPacketHandler implements Runnable{
 			return;
 		
 		Integer curr_rep_degree;
+		// se for initiator peer do backup
 		curr_rep_degree=records.get(headerComponents[3]+"="+headerComponents[4]);
 		if(curr_rep_degree!=null) {
 			records.put(headerComponents[3]+"="+headerComponents[4],curr_rep_degree.intValue()+1);
-		   // CreateMessages.printRecords(records);
+			records.put(headerComponents[3]+"="+headerComponents[4]+"="+headerComponents[2], -1);
+		   // Utils.printRecords(records);
 			return;
 		}
 		File home = FileSystemView.getFileSystemView().getHomeDirectory();
 		File chunk = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/"+headerComponents[3]+File.separator+headerComponents[4]);
+		// se for um dos que faz store
 		if(chunk.exists()) {
 			int chunk_size=(int)chunk.length();
 		    curr_rep_degree=records.get(headerComponents[3]+"="+headerComponents[4]+" "+chunk_size);
 			if(curr_rep_degree!=null) {
 			    records.put(headerComponents[3]+"="+headerComponents[4]+" "+chunk_size,curr_rep_degree.intValue()+1);
-			    //CreateMessages.printRecords(records);
+			    //Utils.printRecords(records);
 			}
 		}
 		return;
