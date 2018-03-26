@@ -11,13 +11,16 @@ public class ControlChannelPacketHandler implements Runnable{
 	DatagramPacket data;
 	DatagramSocket socket;
 	String server_id;
-	ConcurrentHashMap<String,Integer> records;
+	ConcurrentHashMap<String,Integer> records_backup;
+	ConcurrentHashMap<String,Integer> records_store;
 	
-	public ControlChannelPacketHandler(DatagramPacket packet,String server,ConcurrentHashMap<String,Integer> rec,DatagramSocket sock) 
+	
+	public ControlChannelPacketHandler(DatagramPacket packet,String server,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto,DatagramSocket sock) 
 	{
 		data=packet;
 		server_id=server;
-		records=rec;
+		records_backup=recbac;
+		records_store=recsto;
 		socket=sock;
 	}
 
@@ -33,9 +36,22 @@ public class ControlChannelPacketHandler implements Runnable{
 			case "STORED":
 				handleStored(headerComponents);
 				break;
+			case "DELETE":
+				handleDelete(headerComponents);
 			default:
 				break;
 		}
+	}
+	
+	private void handleDelete(String[] headerComponents) {
+		
+		if(headerComponents[2].equals(server_id))
+			return;
+	
+		Utils.deleteFile(headerComponents[3],server_id,records_backup,records_store);
+		
+	
+		
 	}
 
 	private void handleStored(String[] headerComponents) {
@@ -45,11 +61,11 @@ public class ControlChannelPacketHandler implements Runnable{
 		
 		Integer curr_rep_degree;
 		// se for initiator peer do backup
-		curr_rep_degree=records.get(headerComponents[3]+"="+headerComponents[4]);
+		curr_rep_degree=records_backup.get(headerComponents[3]+":"+headerComponents[4]);
 		if(curr_rep_degree!=null) {
-			records.put(headerComponents[3]+"="+headerComponents[4],curr_rep_degree.intValue()+1);
-			records.put(headerComponents[3]+"="+headerComponents[4]+"="+headerComponents[2], -1);
-		   // Utils.printRecords(records);
+			records_backup.put(headerComponents[3]+":"+headerComponents[4],curr_rep_degree.intValue()+1);
+			records_backup.put(headerComponents[3]+":"+headerComponents[4]+":"+headerComponents[2], -1);
+		    //Utils.printRecords(records);
 			return;
 		}
 		File home = FileSystemView.getFileSystemView().getHomeDirectory();
@@ -57,9 +73,9 @@ public class ControlChannelPacketHandler implements Runnable{
 		// se for um dos que faz store
 		if(chunk.exists()) {
 			int chunk_size=(int)chunk.length();
-		    curr_rep_degree=records.get(headerComponents[3]+"="+headerComponents[4]+" "+chunk_size);
+		    curr_rep_degree=records_store.get(headerComponents[3]+":"+headerComponents[4]+":"+chunk_size);
 			if(curr_rep_degree!=null) {
-			    records.put(headerComponents[3]+"="+headerComponents[4]+" "+chunk_size,curr_rep_degree.intValue()+1);
+			    records_store.put(headerComponents[3]+":"+headerComponents[4]+":"+chunk_size,curr_rep_degree.intValue()+1);
 			    //Utils.printRecords(records);
 			}
 		}

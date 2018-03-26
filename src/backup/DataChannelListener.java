@@ -8,13 +8,6 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -38,12 +31,13 @@ class DataChannelListener implements Runnable
 	private String fileID;
 	private ThreadPoolExecutor data_pool;
 	private String server_id; 
-	private ConcurrentHashMap<String,Integer> records;
+	ConcurrentHashMap<String,Integer> records_backup;
+	ConcurrentHashMap<String,Integer> records_store;
 	FileInputStream fis = null;
 	BufferedInputStream bis = null;
 	final static int MAX_PACKET_SIZE=64096;
 	
-	public DataChannelListener(String serverID,ConcurrentHashMap<String,Integer> rec) throws IOException 
+	public DataChannelListener(String serverID,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto) throws IOException 
 	{
 		socket = new MulticastSocket(port);	
 		data_adr = InetAddress.getByName("239.0.0.1");
@@ -51,7 +45,8 @@ class DataChannelListener implements Runnable
 		LinkedBlockingQueue<Runnable> queue= new LinkedBlockingQueue<Runnable>();
 		data_pool = new ThreadPoolExecutor(5, 20, 10, TimeUnit.SECONDS, queue);
 		server_id=serverID;
-		records=rec;
+		records_backup=recbac;
+		records_store=recsto;
 	}
 
 	public void run()
@@ -62,39 +57,26 @@ class DataChannelListener implements Runnable
 			DatagramPacket packet = new DatagramPacket(buf, buf.length);
 			try {
 				socket.receive(packet);
-				data_pool.execute(new DataChannelPacketHandler(packet,server_id,records,socket));
+				data_pool.execute(new DataChannelPacketHandler(packet,server_id,records_backup,records_store,socket));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
 	}
 	
-	public String createFileID(String filename) throws IOException, NoSuchAlgorithmException
-	{
-		File home = FileSystemView.getFileSystemView().getHomeDirectory();
-		Path file = Paths.get(home.getAbsolutePath()+filename);
-		BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
-		FileTime creationTime = attr.creationTime();
-		long fileSize = attr.size();
-		String tempID=filename+creationTime.toString()+fileSize;
 
-		MessageDigest digest = MessageDigest.getInstance("SHA-256");
-		byte[] fileID = digest.digest(tempID.getBytes(StandardCharsets.UTF_8));
-		
-		return Utils.bytesToHex(fileID); 
-	}
 	
 	
 	public void initiateBackup(String filename,int rep_deg) throws NoSuchAlgorithmException, IOException  
 	{
 		rep_degree=rep_deg;
 		file_to_backup=filename;
-		fileID = createFileID(filename);
-		if(records.containsKey(file_to_backup+"="+fileID)) {
+		fileID = Utils.createFileID(filename);
+		if(records_backup.containsKey(file_to_backup+":"+fileID)) {
 			System.out.println("Already backed up this file!");
 			return;
 		}
-		records.put(file_to_backup+"="+fileID, rep_degree);
+		records_backup.put(file_to_backup+":"+fileID, rep_degree);
 		analyzeFile();
 		createPutchunk();
 	}
@@ -148,12 +130,12 @@ class DataChannelListener implements Runnable
 		@Override
 		public void run() {
 			try {
-				records.put(fileID+"="+sent_chunks, 0);
+				records_backup.put(fileID+":"+sent_chunks, 0);
 				while(nr_tries<5) {
 					DatagramPacket packet = new DatagramPacket(chunk, 0, chunk.length,data_adr,7777);
 					socket.send(packet);
 					Thread.sleep(1000);
-					Integer perceived_replication_degree=records.get(fileID+"="+sent_chunks);
+					Integer perceived_replication_degree=records_backup.get(fileID+":"+sent_chunks);
 					if(perceived_replication_degree>=rep_degree) 
 					{
 						sent_chunks++;

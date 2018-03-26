@@ -17,13 +17,15 @@ public class DataChannelPacketHandler implements Runnable
 	DatagramPacket data;
 	DatagramSocket socket;
 	String server_id;
-	ConcurrentHashMap<String,Integer> records;
+	ConcurrentHashMap<String,Integer> records_backup;
+	ConcurrentHashMap<String,Integer> records_store;
 	
-	public DataChannelPacketHandler(DatagramPacket packet,String server,ConcurrentHashMap<String,Integer> rec,DatagramSocket sock) 
+	public DataChannelPacketHandler(DatagramPacket packet,String server,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto,DatagramSocket sock) 
 	{
 		data=packet;
 		server_id=server;
-		records=rec;
+		records_backup=recbac;
+		records_store=recsto;
 		socket=sock;
 	}
 
@@ -81,7 +83,7 @@ public class DataChannelPacketHandler implements Runnable
 		int delay=delay_gen.nextInt(401);
 		Thread.sleep(delay);
 		socket.send(packet);
-		records.put(headerComponents[3]+"="+headerComponents[4]+" "+filedata.length, 1);
+		records_store.put(headerComponents[3]+":"+headerComponents[4]+":"+filedata.length, 1);
 		
 		FileOutputStream out;
 		try {

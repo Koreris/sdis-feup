@@ -17,7 +17,8 @@ public class MulticastServer
 	protected Registry rmi_registry;
 	protected ControlChannelListener control_thread;
 	protected DataChannelListener data_thread;
-	protected ConcurrentHashMap<String,Integer> records;
+	ConcurrentHashMap<String,Integer> records_backup;
+	ConcurrentHashMap<String,Integer> records_store;
 	
 	
 	public MulticastServer(String ident, String proto, String ap) throws IOException, AlreadyBoundException 
@@ -25,9 +26,10 @@ public class MulticastServer
 		id=ident;
 		protocol=proto;
 		access_point=ap;
-		records = new ConcurrentHashMap<String,Integer>(); //load from file data
-		control_thread=new ControlChannelListener(id,records);
-		data_thread=new DataChannelListener(id,records);
+		records_backup = new ConcurrentHashMap<String,Integer>(); //load from file data
+		records_store = new ConcurrentHashMap<String,Integer>();
+		control_thread=new ControlChannelListener(id,records_backup,records_store);
+		data_thread=new DataChannelListener(id,records_backup,records_store);
 		initializeRMI();
 	}
 	

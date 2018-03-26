@@ -20,12 +20,26 @@ public class ServerRemoteObject implements RMIBackup {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return "Putchunk sent";
+		return "Backup initiated";
+	}
+
+	@Override
+	public String delete(String filename) throws RemoteException {
+		try {
+			peer.control_thread.initiateDelete(filename);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return "Delete initiated";
+	}
+
+	@Override
+	public String restore(String filename) throws RemoteException {
+		// TODO Auto-generated method stub
+		return null;
 	}
 	
-	public String restore(String filename) 
-	{
-		
-	}
+
 
 }
