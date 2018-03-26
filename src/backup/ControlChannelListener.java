@@ -58,6 +58,7 @@ class ControlChannelListener implements Runnable
 					Thread.sleep(300);
 					nr_tries++;
 				}
+				System.out.println(fileID);
 				Utils.deleteFile(fileID,server_id,records_backup,records_store);
 				System.out.println("Delete terminated!");
 			}

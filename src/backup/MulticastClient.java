@@ -16,13 +16,16 @@ public class MulticastClient
 	
 	public static void main(String[] args) throws IOException, NotBoundException 
 	{
+		 String response;
 		 if(args.length!=3 && args.length!=4) {
 			 System.out.println("Usage: <RMI object> <sub_protocol> <opnd_1> [opnd_2(replication degree on backup)]");
 		 }
 			 
 		 final Registry registry = LocateRegistry.getRegistry("127.0.0.1",1098);
          final RMIBackup stub = (RMIBackup) registry.lookup(args[0]);
-         String response = stub.backup(args[2], Integer.parseInt(args[3]));
+         if(args[1].equals("backup"))
+        	 response = stub.backup(args[2], Integer.parseInt(args[3]));
+         else response = stub.delete(args[2]);
          printCommand(response);
 	}
 }

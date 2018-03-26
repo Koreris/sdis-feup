@@ -24,6 +24,7 @@ public class Utils
 		File dir = new File(home+"/sdis/files/"+server_id+"/"+fileID);
 		if (dir.exists())
 		{
+			System.out.println("Directory exists: "+fileID);
 			String[]entries = dir.list();
 			for(String s: entries)
 			{
