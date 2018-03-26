@@ -24,7 +24,7 @@ class ControlChannelListener implements Runnable
 		socket = new MulticastSocket(8888);
 		InetAddress mcast_addr = InetAddress.getByName("239.0.0.0");
 		socket.joinGroup(mcast_addr);
-		LinkedBlockingQueue<Runnable> queue= new LinkedBlockingQueue<Runnable>();
+		LinkedBlockingQueue<Runnable> queue = new LinkedBlockingQueue<Runnable>();
 		control_pool = new ThreadPoolExecutor(10, 20, 10, TimeUnit.SECONDS, queue);
 		records=rec;
 		server_id=serverid;

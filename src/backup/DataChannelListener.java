@@ -8,6 +8,13 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -64,18 +71,39 @@ class DataChannelListener implements Runnable
 		}
 	}
 	
+	public String createFileID(String filename) throws IOException, NoSuchAlgorithmException
+	{
+		File home = FileSystemView.getFileSystemView().getHomeDirectory();
+		Path file = Paths.get(home.getAbsolutePath()+filename);
+		BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
+		FileTime creationTime = attr.creationTime();
+		long fileSize = attr.size();
+		String tempID=filename+creationTime.toString()+fileSize;
+
+		MessageDigest digest = MessageDigest.getInstance("SHA-256");
+		byte[] fileID = digest.digest(tempID.getBytes(StandardCharsets.UTF_8));
+		
+		return Utils.bytesToHex(fileID); 
+	}
+	
+	
 	public void initiateBackup(String filename,int rep_deg) throws NoSuchAlgorithmException, IOException  
 	{
 		rep_degree=rep_deg;
 		file_to_backup=filename;
-		records.put(file_to_backup, rep_degree);
+		fileID = createFileID(filename);
+		if(records.containsKey(fileID))
+			return;
+		records.put(fileID, rep_degree);
 		analyzeFile();
 		createPutchunk();
 	}
 	
-	public void createPutchunk() throws NoSuchAlgorithmException, IOException {
+	public void createPutchunk() throws NoSuchAlgorithmException, IOException 
+	{
 		
-		if(sent_chunks==total_chunks) {
+		if(sent_chunks==total_chunks) 
+		{
 			System.out.println("Backup over: Sent "+sent_chunks+"/"+total_chunks);
 			fis.close();
 			bis.close();
@@ -91,10 +119,12 @@ class DataChannelListener implements Runnable
 		String[] headerComponents = headerString.split(" ");
 		fileID = headerComponents[3];
 		
-		try {
+		try 
+		{
 			data=getFileChunk();
 		}
-		catch(Exception e) {
+		catch(Exception e) 
+		{
 			e.printStackTrace();
 			return;
 		}
@@ -139,60 +169,65 @@ class DataChannelListener implements Runnable
 		
 	}
 	
-	public void analyzeFile() {
+	public void analyzeFile() 
+	{
           // send file
 		
 		  File home = FileSystemView.getFileSystemView().getHomeDirectory();
 		  File my_file = new File (home.getAbsolutePath()+file_to_backup);
           file_size=(int)my_file.length();
-          try {
+          try 
+          {
 				fis = new FileInputStream(my_file);
 				bis = new BufferedInputStream(fis);
-		  } catch (FileNotFoundException e) {
+		  } catch (FileNotFoundException e) 
+          {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 		  }
           
           total_chunks=file_size/64000;
           total_chunks++;
-          if(file_size<64000) {
+          if(file_size<64000) 
+          {
   			total_chunks=1;
   			final_chunk_size=file_size;
   			return;
   		  }
-          if((file_size % 64000)==0) {
+          if((file_size % 64000)==0) 
+          {
         	  total_chunks+=1;
         	  final_chunk_size=0;
         	  return;
           }
     
           final_chunk_size=file_size-(total_chunks-1)*64000;
-        
-		  
 	}
 	
-	public byte[] getFileChunk() throws IOException {
+	public byte[] getFileChunk() throws IOException 
+	{
         
 		byte[] file_data;
 		
-		if(sent_chunks<total_chunks-1) {
-			if(file_size<64000) {
+		if(sent_chunks<total_chunks-1) 
+		{
+			if(file_size<64000) 
+			{
 				file_data= new byte [file_size];
 				bis.read(file_data,0,file_size); 
 			}
-			else{
+			else
+			{
 				file_data= new byte [64000];
 				bis.read(file_data,0,64000); 
 			}
 		}
-		else {
+		else 
+		{
 			file_data= new byte [final_chunk_size];
 			bis.read(file_data,0,final_chunk_size); 
 		}
 		
         return file_data;
 	}
-	
-	
-	
 }
