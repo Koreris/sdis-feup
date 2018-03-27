@@ -13,24 +13,38 @@ import java.util.concurrent.TimeUnit;
 class ControlChannelListener implements Runnable
 {
 	private MulticastSocket socket;
-	private InetAddress	control_adr;
-	private int port;
+	
 	private ThreadPoolExecutor control_pool;
 	ConcurrentHashMap<String,Integer> records_backup;
 	ConcurrentHashMap<String,Integer> records_store;
 	private String server_id;
 	final static int MAX_PACKET_SIZE=64096;
 	
-	public ControlChannelListener(String serverid,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto) throws IOException 
+	public ControlChannelListener(String serverid,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto, String adr, int port) throws IOException 
 	{	
-		socket = new MulticastSocket(8888);
-		InetAddress mcast_addr = InetAddress.getByName("239.0.0.0");
-		socket.joinGroup(mcast_addr);
+		socket = new MulticastSocket(port);
+		InetAddress control_adr = InetAddress.getByName(adr);
+		socket.joinGroup(control_adr);
 		LinkedBlockingQueue<Runnable> queue = new LinkedBlockingQueue<Runnable>();
 		control_pool = new ThreadPoolExecutor(10, 20, 10, TimeUnit.SECONDS, queue);
 		records_backup=recbac;
 		records_store=recsto;
 		server_id=serverid;
+	}
+	
+	public void run()
+	{
+		while(true)
+		{
+			byte[] buf = new byte[MAX_PACKET_SIZE];
+			DatagramPacket packet = new DatagramPacket(buf, buf.length);
+			try {
+				socket.receive(packet);
+				control_pool.execute(new ControlChannelPacketHandler(packet,server_id,records_backup,records_store,socket));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 	
 	public void initiateDelete(String filename) throws IOException, NoSuchAlgorithmException, InterruptedException
@@ -68,19 +82,7 @@ class ControlChannelListener implements Runnable
 		}
 		
 	}
-	public void run()
-	{
-		while(true)
-		{
-			byte[] buf = new byte[MAX_PACKET_SIZE];
-			DatagramPacket packet = new DatagramPacket(buf, buf.length);
-			try {
-				socket.receive(packet);
-				control_pool.execute(new ControlChannelPacketHandler(packet,server_id,records_backup,records_store,socket));
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
+	
+	
 }
 

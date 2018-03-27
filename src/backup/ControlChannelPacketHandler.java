@@ -43,19 +43,14 @@ public class ControlChannelPacketHandler implements Runnable{
 		}
 	}
 	
-	private void handleDelete(String[] headerComponents) {
-		
+	private void handleDelete(String[] headerComponents) {	
 		if(headerComponents[2].equals(server_id))
 			return;
 	
-		Utils.deleteFile(headerComponents[3],server_id,records_backup,records_store);
-		
-	
-		
+		Utils.deleteFile(headerComponents[3],server_id,records_backup,records_store);	
 	}
 
 	private void handleStored(String[] headerComponents) {
-		
 		if(headerComponents[2].equals(server_id))
 			return;
 		

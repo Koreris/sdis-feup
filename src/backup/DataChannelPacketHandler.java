@@ -19,14 +19,18 @@ public class DataChannelPacketHandler implements Runnable
 	String server_id;
 	ConcurrentHashMap<String,Integer> records_backup;
 	ConcurrentHashMap<String,Integer> records_store;
+	String control_adr;
+	int control_port;
 	
-	public DataChannelPacketHandler(DatagramPacket packet,String server,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto,DatagramSocket sock) 
+	public DataChannelPacketHandler(DatagramPacket packet,String server,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto,DatagramSocket sock, String controladr, int controlport) 
 	{
 		data=packet;
 		server_id=server;
 		records_backup=recbac;
 		records_store=recsto;
 		socket=sock;
+		control_adr=controladr;
+		control_port=controlport;
 	}
 
 	@Override
@@ -77,8 +81,8 @@ public class DataChannelPacketHandler implements Runnable
 		// guardar ficheiro no diretorio headerComponents[3]/headerComponents[4]
 		
 		byte[] stored = CreateMessages.createHeader("STORED", headerComponents[1], server_id, headerComponents[3], Integer.parseInt(headerComponents[4]),0);
-		InetAddress control_addr = InetAddress.getByName("239.0.0.0");
-		DatagramPacket packet = new DatagramPacket(stored,0,stored.length,control_addr,8888);
+		InetAddress control_addr = InetAddress.getByName(control_adr);
+		DatagramPacket packet = new DatagramPacket(stored,0,stored.length,control_addr,control_port);
 		Random delay_gen = new Random();
 		int delay=delay_gen.nextInt(401);
 		Thread.sleep(delay);
@@ -93,11 +97,8 @@ public class DataChannelPacketHandler implements Runnable
 			    newfile.createNewFile();
 			} 
 			out = new FileOutputStream(newfile);
-			
 			out.write(filedata);
-			
 			out.close();
-			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

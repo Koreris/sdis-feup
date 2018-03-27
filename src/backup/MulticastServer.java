@@ -13,23 +13,27 @@ public class MulticastServer
 	private String id;
 	private String protocol;
 	private String access_point;
+	private Integer storage_capacity;
 	protected ServerRemoteObject rmi_object;
 	protected Registry rmi_registry;
 	protected ControlChannelListener control_thread;
 	protected DataChannelListener data_thread;
+	protected RecoveryChannelListener recovery_thread;
 	ConcurrentHashMap<String,Integer> records_backup;
 	ConcurrentHashMap<String,Integer> records_store;
 	
 	
-	public MulticastServer(String ident, String proto, String ap) throws IOException, AlreadyBoundException 
+	public MulticastServer(String ident, String proto, String ap, String control_adr, Integer control_port, String data_adr, int data_port, String recovery_adr, int recovery_port, int storage) throws IOException, AlreadyBoundException 
 	{
 		id=ident;
 		protocol=proto;
 		access_point=ap;
+		storage_capacity=storage;
 		records_backup = new ConcurrentHashMap<String,Integer>(); //load from file data
 		records_store = new ConcurrentHashMap<String,Integer>();
-		control_thread=new ControlChannelListener(id,records_backup,records_store);
-		data_thread=new DataChannelListener(id,records_backup,records_store);
+		control_thread=new ControlChannelListener(id,records_backup,records_store,control_adr,control_port);
+		data_thread=new DataChannelListener(id,records_backup,records_store,data_adr,data_port,storage_capacity,control_adr,control_port);
+		recovery_thread=new RecoveryChannelListener(id,records_backup,records_store,recovery_adr,recovery_port,control_adr,control_port);
 		initializeRMI();
 	}
 	
@@ -37,6 +41,7 @@ public class MulticastServer
 	{
 		new Thread(control_thread).start();
 		new Thread(data_thread).start();
+		new Thread(recovery_thread).start();
 	}
 	
 	private void initializeRMI() throws RemoteException, AlreadyBoundException 
@@ -57,7 +62,7 @@ public class MulticastServer
 	
 	public static void main(String[] args) throws IOException, AlreadyBoundException 
 	{
-		MulticastServer serv = new MulticastServer(args[0],args[1],args[2]);
+		MulticastServer serv = new MulticastServer(args[0],args[1],args[2],args[3],Integer.parseInt(args[4]),args[5],Integer.parseInt(args[6]),args[7],Integer.parseInt(args[8]),Integer.parseInt(args[9]));
 		serv.startUp();
 		
 	}

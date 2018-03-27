@@ -16,8 +16,7 @@ public class ServerRemoteObject implements RMIBackup {
 	{
 		try {
 			peer.data_thread.initiateBackup(filename,replication_degree);
-		} catch (NoSuchAlgorithmException | IOException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return "Backup initiated";
@@ -28,7 +27,6 @@ public class ServerRemoteObject implements RMIBackup {
 		try {
 			peer.control_thread.initiateDelete(filename);
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return "Delete initiated";
@@ -36,8 +34,12 @@ public class ServerRemoteObject implements RMIBackup {
 
 	@Override
 	public String restore(String filename) throws RemoteException {
-		// TODO Auto-generated method stub
-		return null;
+		try {
+			peer.recovery_thread.initiateRestore(filename);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "Restore initiated";
 	}
 	
 
