@@ -52,7 +52,17 @@ public class Utils
 			}
 		}
 	}
-
+	
+	public static long checkDirectorySize(File directory) {
+		long length = 0;
+	    for (File file : directory.listFiles()) {
+	        if (file.isFile())
+	            length += file.length();
+	        if(file.isDirectory())
+            length += checkDirectorySize(file);
+	    }
+        return length;
+    }
 	
 	public static String createFileID(String filename) throws IOException, NoSuchAlgorithmException
 	{

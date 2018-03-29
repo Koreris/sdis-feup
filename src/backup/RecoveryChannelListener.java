@@ -3,21 +3,14 @@ package backup;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -96,6 +89,17 @@ class RecoveryChannelListener implements Runnable
 			chunks_check = new ConcurrentHashMap<Integer,Integer>();
 			file_to_restore=filename;
 			fileID = Utils.createFileID(file_to_restore);
+			File home = FileSystemView.getFileSystemView().getHomeDirectory();
+			File restore_dir = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restored/"+fileID);
+			if (restore_dir.exists())
+			{
+				String[]entries = restore_dir.list();
+				for(String s: entries)
+				{
+				    File currentFile = new File(restore_dir.getPath(),s);
+				    currentFile.delete();
+				}
+			}
 			analyzeFile();
 			for(int i=0;i<total_chunks;i++) 
 			{
@@ -120,7 +124,7 @@ class RecoveryChannelListener implements Runnable
 			}
 		}
 
-		public void checkReceivedAllChunks() throws IOException {
+		public void checkReceivedAllChunks() {
 			File home = FileSystemView.getFileSystemView().getHomeDirectory();
 			File restore_dir = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restored/"+fileID);
 			if (restore_dir.exists())
@@ -129,35 +133,37 @@ class RecoveryChannelListener implements Runnable
 				if(entries.length==total_chunks) {
 					mergeChunksToFile();
 					restore_done=true;
+					System.out.println("Restore is done!");
 				}
-				System.out.println("Restore is done!");
 			}
 			
 		}
 		
-		public void mergeChunksToFile() throws IOException{
+		public void mergeChunksToFile(){
 			records_restore.remove(fileID);
 			FileOutputStream out;
 			String[] file = file_to_restore.split("\\\\");
 			File home = FileSystemView.getFileSystemView().getHomeDirectory();
 		
 			File restored_file = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restored/"+fileID+File.separator+file[file.length-1]);
-			
-			if (!restored_file.exists()) {
-	
-			    restored_file.createNewFile();
+			try {
+				if (!restored_file.exists()) {
+				    restored_file.createNewFile();
+				}
+				out = new FileOutputStream(restored_file);
+				File restore_dir = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restored/"+fileID);		
+				for(int i=0;i<total_chunks;i++)
+				{
+				    File currentFile = new File(restore_dir.getPath(),i+"");
+				    System.out.println("MERGING "+i);
+					out.write(Files.readAllBytes(currentFile.toPath()));
+				    currentFile.delete();
+				}
+				out.close();
 			}
-			
-			out = new FileOutputStream(restored_file);
-			File restore_dir = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restored/"+fileID);
-			String[]entries = restore_dir.list();
-			for(String s: entries)
-			{
-			    File currentFile = new File(restore_dir.getPath(),s);
-				out.write(Files.readAllBytes(currentFile.toPath()));
-			    currentFile.delete();
+			catch(IOException e) {
+				e.printStackTrace();
 			}
-			out.close();
 			
 		}
 		

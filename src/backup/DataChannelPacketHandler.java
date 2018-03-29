@@ -17,12 +17,13 @@ public class DataChannelPacketHandler implements Runnable
 	DatagramPacket data;
 	DatagramSocket socket;
 	String server_id;
+	Integer storage_capacity;
 	ConcurrentHashMap<String,Integer> records_backup;
 	ConcurrentHashMap<String,Integer> records_store;
 	String control_adr;
 	int control_port;
 	
-	public DataChannelPacketHandler(DatagramPacket packet,String server,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto,DatagramSocket sock, String controladr, int controlport) 
+	public DataChannelPacketHandler(DatagramPacket packet,String server,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto,DatagramSocket sock, String controladr, int controlport,Integer storage_space) 
 	{
 		data=packet;
 		server_id=server;
@@ -31,6 +32,7 @@ public class DataChannelPacketHandler implements Runnable
 		socket=sock;
 		control_adr=controladr;
 		control_port=controlport;
+		storage_capacity=storage_space;
 	}
 
 	@Override
@@ -66,7 +68,20 @@ public class DataChannelPacketHandler implements Runnable
 		if(headerComponents[2].equals(server_id))
 			return;
 		
+		
 		File home = FileSystemView.getFileSystemView().getHomeDirectory();
+		File peer_directory = new File(home.getAbsolutePath()+"/sdis/files/"+server_id);
+		File restore_directory = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restore");
+		
+		if(peer_directory.exists()) {
+			long storage_occupied=Utils.checkDirectorySize(peer_directory);
+		    
+			if(restore_directory.exists()) {
+				storage_occupied-=Utils.checkDirectorySize(restore_directory);
+			}
+			if(storage_occupied+filedata.length>storage_capacity)
+				return;
+		}
 		File chunk = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/"+headerComponents[3]+File.separator+headerComponents[4]);
 		
 		if(chunk.exists()) {

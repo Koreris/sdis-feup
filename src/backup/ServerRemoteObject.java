@@ -1,8 +1,6 @@
 package backup;
 
-import java.io.IOException;
 import java.rmi.RemoteException;
-import java.security.NoSuchAlgorithmException;
 
 public class ServerRemoteObject implements RMIBackup {
 	MulticastServer peer;

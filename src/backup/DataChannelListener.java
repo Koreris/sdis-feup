@@ -57,7 +57,7 @@ class DataChannelListener implements Runnable
 			DatagramPacket packet = new DatagramPacket(buf, buf.length);
 			try {
 				socket.receive(packet);
-				data_pool.execute(new DataChannelPacketHandler(packet,server_id,records_backup,records_store,socket,control_adr,control_port));
+				data_pool.execute(new DataChannelPacketHandler(packet,server_id,records_backup,records_store,socket,control_adr,control_port,storage_capacity));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
