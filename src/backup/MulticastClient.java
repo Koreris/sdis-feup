@@ -27,7 +27,9 @@ public class MulticastClient
         	 response = stub.backup(args[2], Integer.parseInt(args[3]));
          else if(args[1].equals("delete"))
          	response = stub.delete(args[2]);
-         else response = stub.restore(args[2]);
+         else if(args[1].equals("restore"))
+        	response = stub.restore(args[2]);
+         else response = stub.reclaim(Integer.parseInt(args[2]));
          printCommand(response);
 	}
 }

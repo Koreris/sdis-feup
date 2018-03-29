@@ -44,7 +44,7 @@ public class ServerRemoteObject implements RMIBackup {
 	public String reclaim(Integer space) throws RemoteException {
 		try
 		{
-			peer.initiateReclaim(space);
+			peer.data_thread.initiateReclaim(space);
 		}
 		catch (Exception e)
 		{

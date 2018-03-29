@@ -18,7 +18,7 @@ import java.io.*;
 public class MulticastServer
 {
 	private String id;
-	private String protocol;
+	private String protocol_version;
 	private String access_point;
 	private Integer storage_capacity;
 	private ScheduledThreadPoolExecutor record_keeper;
@@ -35,7 +35,7 @@ public class MulticastServer
 	public MulticastServer(String ident, String proto, String ap, String control_adr, Integer control_port, String data_adr, int data_port, String recovery_adr, int recovery_port, int storage) throws IOException, AlreadyBoundException 
 	{
 		id=ident;
-		protocol=proto;
+		protocol_version=proto;
 		access_point=ap;
 		storage_capacity=storage*1000;
 		records_backup = new ConcurrentHashMap<String,Integer>(); //load from file data
@@ -78,7 +78,6 @@ public class MulticastServer
 			records_store=(ConcurrentHashMap<String, Integer>) de2.readObject();
 			de2.close();
 			fis2.close();
-			Utils.printRecords(records_store);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -133,57 +132,6 @@ public class MulticastServer
 		rmi_registry.bind(access_point, stub);
 	}
 	
-	public void initiateReclaim(Integer space) 
-	{
-		record_keeper.schedule(new ReclaimService(space), 0, TimeUnit.SECONDS);
-	}
-	
-	public class ReclaimService implements Runnable{
-		
-		int space_to_occupy;
-		public ReclaimService(Integer s) 
-		{
-			space_to_occupy=s;
-		}
-
-		@Override
-		public void run() 
-		{
-			File home = FileSystemView.getFileSystemView().getHomeDirectory();
-			File peer_directory = new File(home.getAbsolutePath()+"/sdis/files/"+id);
-			File restore_directory = new File(home.getAbsolutePath()+"/sdis/files/"+id+"/restore");
-			
-			if(peer_directory.exists()) 
-			{
-				long storage_occupied=Utils.checkDirectorySize(peer_directory);
-			    
-				if(restore_directory.exists()) 
-				{
-					storage_occupied-=Utils.checkDirectorySize(restore_directory);
-				}
-				
-				if(storage_occupied<=space_to_occupy)
-					return;
-				else
-				{
-					long accumulator = 0;
-					//key=fileID:chunkNo:size:desiredRepDegree value=perceivedRepDegree
-					for (String key : records_store.keySet()) 
-					{
-						String[] keyComponents = key.split(":");
-						int file_size = Integer.parseInt(keyComponents[2]);
-						accumulator=accumulator+file_size;
-						File to_delete= new File(peer_directory+"/"+keyComponents[0]+File.separator+keyComponents[1]);
-						to_delete.delete();
-						records_store.remove(key);
-						if(storage_occupied-accumulator<=space_to_occupy)
-							break;
-					}
-				}
-			} 
-			else return;
-		}
-	}
 	
 	public static void main(String[] args) throws IOException, AlreadyBoundException 
 	{
