@@ -21,6 +21,7 @@ public class MulticastServer
 	protected RecoveryChannelListener recovery_thread;
 	ConcurrentHashMap<String,Integer> records_backup;
 	ConcurrentHashMap<String,Integer> records_store;
+	ConcurrentHashMap<String,Integer> records_restore;
 	
 	
 	public MulticastServer(String ident, String proto, String ap, String control_adr, Integer control_port, String data_adr, int data_port, String recovery_adr, int recovery_port, int storage) throws IOException, AlreadyBoundException 
@@ -31,9 +32,10 @@ public class MulticastServer
 		storage_capacity=storage;
 		records_backup = new ConcurrentHashMap<String,Integer>(); //load from file data
 		records_store = new ConcurrentHashMap<String,Integer>();
-		control_thread=new ControlChannelListener(id,records_backup,records_store,control_adr,control_port);
+		records_restore = new ConcurrentHashMap<String,Integer>();
+		control_thread=new ControlChannelListener(id,records_backup,records_store,records_restore,control_adr,control_port,recovery_adr,recovery_port);
 		data_thread=new DataChannelListener(id,records_backup,records_store,data_adr,data_port,storage_capacity,control_adr,control_port);
-		recovery_thread=new RecoveryChannelListener(id,records_backup,records_store,recovery_adr,recovery_port,control_adr,control_port);
+		recovery_thread=new RecoveryChannelListener(id,records_backup,records_store,records_restore,recovery_adr,recovery_port,control_adr,control_port);
 		initializeRMI();
 	}
 	
