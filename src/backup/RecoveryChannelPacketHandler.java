@@ -56,10 +56,7 @@ public class RecoveryChannelPacketHandler implements Runnable
 			return;
 		}
 			
-		//TODO distributed between 0 and 400 ms,
-		//before sending the CHUNK message. 
-		//If it receives a CHUNK message before that time expires, 
-		//it will not send the CHUNK message.
+	
 		if(records_restore.containsKey(headerComponents[3])) {
 			File home = FileSystemView.getFileSystemView().getHomeDirectory();
 			File chunk = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restored/"+headerComponents[3]+File.separator+headerComponents[4]);

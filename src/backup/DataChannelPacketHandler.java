@@ -102,7 +102,7 @@ public class DataChannelPacketHandler implements Runnable
 		int delay=delay_gen.nextInt(401);
 		Thread.sleep(delay);
 		socket.send(packet);
-		records_store.put(headerComponents[3]+":"+headerComponents[4]+":"+filedata.length, 1);
+		records_store.put(headerComponents[3]+":"+headerComponents[4]+":"+filedata.length+":"+headerComponents[5], 1);
 		
 		FileOutputStream out;
 		try {

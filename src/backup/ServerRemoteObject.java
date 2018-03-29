@@ -39,6 +39,19 @@ public class ServerRemoteObject implements RMIBackup {
 		}
 		return "Restore initiated";
 	}
+
+	@Override
+	public String reclaim(Integer space) throws RemoteException {
+		try
+		{
+			peer.initiateReclaim(space);
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		return "Reclaim initiated";
+	}
 	
 
 

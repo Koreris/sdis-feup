@@ -64,13 +64,13 @@ class DataChannelListener implements Runnable
 		}
 	}
 	
-
-	
-	
 	public void initiateBackup(String filename,int rep_deg)  
 	{
 		data_pool.execute(new BackupService(filename,rep_deg));
 	}
+	
+	
+	
 	
 	public class BackupService implements Runnable {
 		private int file_size;
@@ -201,7 +201,6 @@ class DataChannelListener implements Runnable
 	        	  final_chunk_size=0;
 	        	  return;
 	          }
-	    
 	          final_chunk_size=file_size-(total_chunks-1)*64000;
 		}
 		
@@ -228,11 +227,9 @@ class DataChannelListener implements Runnable
 				file_data= new byte [final_chunk_size];
 				bis.read(file_data,0,final_chunk_size); 
 			}
-			
 	        return file_data;
 		}
-
-	
 	}
-	
+
+
 }
