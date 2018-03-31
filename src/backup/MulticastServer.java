@@ -17,34 +17,45 @@ import java.io.*;
 
 public class MulticastServer
 {
-	private String id;
-	private String protocol_version;
+
 	private String access_point;
-	private Integer storage_capacity;
 	private ScheduledThreadPoolExecutor record_keeper;
-	protected ServerRemoteObject rmi_object;
-	protected Registry rmi_registry;
+	private ServerRemoteObject rmi_object;
+	private Registry rmi_registry;
+	protected Integer storage_capacity;
+	protected String id;
+	protected  String protocol_version;
 	protected ControlChannelListener control_thread;
 	protected DataChannelListener data_thread;
 	protected RecoveryChannelListener recovery_thread;
-	ConcurrentHashMap<String,Integer> records_backup;
-	ConcurrentHashMap<String,Integer> records_store;
-	ConcurrentHashMap<String,Integer> records_restore;
+	protected ConcurrentHashMap<String,Integer> records_backup;
+	protected ConcurrentHashMap<String,Integer> records_store;
+	protected ConcurrentHashMap<String,Integer> records_restore;
+	protected ConcurrentHashMap<String,Integer> volatile_store_records;
+	protected String control_address,data_address,recovery_address;
+	protected int control_port,data_port,recovery_port;
 
 
-	public MulticastServer(String ident, String proto, String ap, String control_adr, Integer control_port, String data_adr, int data_port, String recovery_adr, int recovery_port, int storage) throws IOException, AlreadyBoundException 
+	public MulticastServer(String ident, String proto, String ap, String control_adr, Integer controlport, String data_adr, int dataport, String recovery_adr, int recoveryport, int storage) throws IOException, AlreadyBoundException 
 	{
 		id=ident;
 		protocol_version=proto;
 		access_point=ap;
 		storage_capacity=storage*1000;
+		control_address=control_adr;
+		data_address=data_adr;
+		recovery_address=recovery_adr;
+		control_port=controlport;
+		data_port=dataport;
+		recovery_port=recoveryport;
 		records_backup = new ConcurrentHashMap<String,Integer>(); //load from file data
 		records_store = new ConcurrentHashMap<String,Integer>();
 		records_restore = new ConcurrentHashMap<String,Integer>();
+		volatile_store_records = new ConcurrentHashMap<String,Integer>();
 		record_keeper= new ScheduledThreadPoolExecutor(2);
-		control_thread=new ControlChannelListener(id,records_backup,records_store,records_restore,control_adr,control_port,recovery_adr,recovery_port);
-		data_thread=new DataChannelListener(id,records_backup,records_store,data_adr,data_port,storage_capacity,control_adr,control_port);
-		recovery_thread=new RecoveryChannelListener(id,records_backup,records_store,records_restore,recovery_adr,recovery_port,control_adr,control_port);
+		control_thread=new ControlChannelListener(this);
+		data_thread=new DataChannelListener(this);
+		recovery_thread=new RecoveryChannelListener(this);
 		initializeRMI();
 	}
 

@@ -8,45 +8,28 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-
 import javax.swing.filechooser.FileSystemView;
 
-//TODO -> parametrizar os servidores com os ips e ports dos canais
+
 class DataChannelListener implements Runnable
 {
 	private MulticastSocket socket;
-
-	private String control_adr;
-	private int control_port;
-	private InetAddress data_adr;
-	private int data_port;
+	private MulticastServer main_server;
 	private ThreadPoolExecutor data_pool;
-	private String server_id; 
-	private Integer storage_capacity;
-	ConcurrentHashMap<String,Integer> records_backup;
-	ConcurrentHashMap<String,Integer> records_store;
 
 	final static int MAX_PACKET_SIZE=64096;
 	
-	public DataChannelListener(String serverID,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto, String adr, int dataport, Integer storage, String controladr, int controlport) throws IOException 
-	{
-		data_port=dataport;
-		socket = new MulticastSocket(data_port);	
-		data_adr = InetAddress.getByName(adr);
-		socket.joinGroup(data_adr);
-		control_port=controlport;
-		control_adr=controladr;
+	public DataChannelListener(MulticastServer multicastServer) throws UnknownHostException, IOException {
+		main_server=multicastServer;
+		socket = new MulticastSocket(main_server.data_port);	
+		socket.joinGroup(InetAddress.getByName(main_server.data_address));
 		LinkedBlockingQueue<Runnable> queue= new LinkedBlockingQueue<Runnable>();
 		data_pool = new ThreadPoolExecutor(5, 20, 10, TimeUnit.SECONDS, queue);
-		server_id=serverID;
-		storage_capacity=storage;
-		records_backup=recbac;
-		records_store=recsto;
 	}
 
 	public void run()
@@ -57,7 +40,7 @@ class DataChannelListener implements Runnable
 			DatagramPacket packet = new DatagramPacket(buf, buf.length);
 			try {
 				socket.receive(packet);
-				data_pool.execute(new DataChannelPacketHandler(packet,server_id,records_backup,records_store,socket,control_adr,control_port,storage_capacity));
+				data_pool.execute(new DataChannelPacketHandler(packet,main_server,socket));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -87,8 +70,8 @@ class DataChannelListener implements Runnable
 		public void run() 
 		{
 			File home = FileSystemView.getFileSystemView().getHomeDirectory();
-			File peer_directory = new File(home.getAbsolutePath()+"/sdis/files/"+server_id);
-			File restore_directory = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restore");
+			File peer_directory = new File(home.getAbsolutePath()+"/sdis/files/"+main_server.id);
+			File restore_directory = new File(home.getAbsolutePath()+"/sdis/files/"+main_server.id+"/restore");
 			
 			if(peer_directory.exists()) 
 			{
@@ -105,17 +88,17 @@ class DataChannelListener implements Runnable
 				{
 					long accumulator = 0;
 					//key=fileID:chunkNo:size:desiredRepDegree value=perceivedRepDegree
-					for (String key : records_store.keySet()) 
+					for (String key : main_server.records_store.keySet()) 
 					{
 						String[] keyComponents = key.split(":");
 						int file_size = Integer.parseInt(keyComponents[2]);
 						accumulator=accumulator+file_size;
 						File to_delete= new File(peer_directory+"/"+keyComponents[0]+File.separator+keyComponents[1]);
 						to_delete.delete();
-						records_store.remove(key);
+						main_server.records_store.remove(key);
 						try {
-							byte[] removed = CreateMessages.createHeader("REMOVED","1.0", server_id, keyComponents[0], Integer.parseInt(keyComponents[1]), 0);
-							DatagramPacket packet = new DatagramPacket(removed, 0, removed.length,InetAddress.getByName(control_adr),control_port);
+							byte[] removed = CreateMessages.createHeader("REMOVED","1.0", main_server.id, keyComponents[0], Integer.parseInt(keyComponents[1]), 0);
+							DatagramPacket packet = new DatagramPacket(removed, 0, removed.length,InetAddress.getByName(main_server.control_address),main_server.control_port);
 							socket.send(packet);
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
@@ -151,11 +134,11 @@ class DataChannelListener implements Runnable
 		public void run() {
 			try {
 				fileID = Utils.createFileID(file_to_backup);
-				if(records_backup.containsKey(file_to_backup+":"+fileID)) {
+				if(main_server.records_backup.containsKey(file_to_backup+":"+fileID)) {
 					System.out.println("Already backed up this file!");
 					return;
 				}
-				records_backup.put(file_to_backup+":"+fileID, rep_degree);
+				main_server.records_backup.put(file_to_backup+":"+fileID, rep_degree);
 				analyzeFile();
 				createPutchunk();
 			}
@@ -180,7 +163,7 @@ class DataChannelListener implements Runnable
 			
 			byte[] data = null;
 			//send putchunk
-			byte[] header=CreateMessages.createHeader("PUTCHUNK", "1.0", server_id, fileID, sent_chunks, rep_degree);
+			byte[] header=CreateMessages.createHeader("PUTCHUNK", main_server.protocol_version, main_server.id, fileID, sent_chunks, rep_degree);
 			
 			try 
 			{
@@ -205,12 +188,12 @@ class DataChannelListener implements Runnable
 		public void sendChunk(byte[] chunk){
 			int nr_tries=0;
 			try {
-				records_backup.put(fileID+":"+sent_chunks, 0);
+				main_server.records_backup.put(fileID+":"+sent_chunks, 0);
 				while(nr_tries<5) {
-					DatagramPacket packet = new DatagramPacket(chunk, 0, chunk.length,data_adr,data_port);
+					DatagramPacket packet = new DatagramPacket(chunk, 0, chunk.length,InetAddress.getByName(main_server.data_address),main_server.data_port);
 					socket.send(packet);
 					Thread.sleep(1000);
-					Integer perceived_replication_degree=records_backup.get(fileID+":"+sent_chunks);
+					Integer perceived_replication_degree=main_server.records_backup.get(fileID+":"+sent_chunks);
 					if(perceived_replication_degree>=rep_degree) 
 					{
 						sent_chunks++;

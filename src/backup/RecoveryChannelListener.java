@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,33 +22,19 @@ import javax.swing.filechooser.FileSystemView;
 class RecoveryChannelListener implements Runnable
 {
 	private MulticastSocket socket;
+	private MulticastServer main_server;
 	private ThreadPoolExecutor recovery_pool;
 	private ScheduledThreadPoolExecutor scheduling_pool;
-	private String server_id; 
-	private String control_adr;
-	private int control_port;
-	private InetAddress recovery_adr;
-	private int recovery_port;
-	ConcurrentHashMap<String,Integer> records_backup;
-	ConcurrentHashMap<String,Integer> records_store;
-	ConcurrentHashMap<String,Integer> records_restore;
+	
 	final static int MAX_PACKET_SIZE=64096;
 
-	public RecoveryChannelListener(String serverID,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto,ConcurrentHashMap<String,Integer> restore_recs, String adr, int port, String controladr, Integer controlport) throws IOException 
-	{
-		recovery_port=port;
-		socket = new MulticastSocket(recovery_port);	
-		control_port=controlport;
-		control_adr=controladr;
-		recovery_adr = InetAddress.getByName(adr);
-		socket.joinGroup(recovery_adr);
+	public RecoveryChannelListener(MulticastServer multicastServer) throws UnknownHostException, IOException {
+		main_server=multicastServer;
+		socket = new MulticastSocket(main_server.recovery_port);	
+		socket.joinGroup(InetAddress.getByName(main_server.recovery_address));
 		LinkedBlockingQueue<Runnable> queue= new LinkedBlockingQueue<Runnable>();
 		recovery_pool = new ThreadPoolExecutor(5, 20, 10, TimeUnit.SECONDS, queue);
 		scheduling_pool = new ScheduledThreadPoolExecutor(5);
-		server_id=serverID;
-		records_backup=recbac;
-		records_store=recsto;
-		records_restore = restore_recs;
 	}
 
 	public void run()
@@ -58,7 +45,7 @@ class RecoveryChannelListener implements Runnable
 				byte[] buf = new byte[MAX_PACKET_SIZE];
 				DatagramPacket packet = new DatagramPacket(buf, buf.length);
 				socket.receive(packet);
-				recovery_pool.execute(new RecoveryChannelPacketHandler(packet,server_id,records_restore,scheduling_pool));
+				recovery_pool.execute(new RecoveryChannelPacketHandler(packet,main_server.id,main_server.records_restore,scheduling_pool));
 			} catch (IOException e) {
 				e.printStackTrace();
 				return;
@@ -90,7 +77,7 @@ class RecoveryChannelListener implements Runnable
 			file_to_restore=filename;
 			fileID = Utils.createFileID(file_to_restore);
 			File home = FileSystemView.getFileSystemView().getHomeDirectory();
-			File restore_dir = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restored/"+fileID);
+			File restore_dir = new File(home.getAbsolutePath()+"/sdis/files/"+main_server.id+"/restored/"+fileID);
 			if (restore_dir.exists())
 			{
 				String[]entries = restore_dir.list();
@@ -106,7 +93,7 @@ class RecoveryChannelListener implements Runnable
 				scheduling_pool.schedule(new GetchunkSender(i), 50*i, TimeUnit.MILLISECONDS);
 
 			}
-			records_restore.put(fileID, 1);
+			main_server.records_restore.put(fileID, 1);
 		}
 
 		@Override
@@ -126,7 +113,7 @@ class RecoveryChannelListener implements Runnable
 
 		public void checkReceivedAllChunks() {
 			File home = FileSystemView.getFileSystemView().getHomeDirectory();
-			File restore_dir = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restored/"+fileID);
+			File restore_dir = new File(home.getAbsolutePath()+"/sdis/files/"+main_server.id+"/restored/"+fileID);
 			if (restore_dir.exists())
 			{
 				String[]entries = restore_dir.list();
@@ -140,18 +127,18 @@ class RecoveryChannelListener implements Runnable
 		}
 		
 		public void mergeChunksToFile(){
-			records_restore.remove(fileID);
+			main_server.records_restore.remove(fileID);
 			FileOutputStream out;
 			String[] file = file_to_restore.split("\\\\");
 			File home = FileSystemView.getFileSystemView().getHomeDirectory();
 		
-			File restored_file = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restored/"+fileID+File.separator+file[file.length-1]);
+			File restored_file = new File(home.getAbsolutePath()+"/sdis/files/"+main_server.id+"/restored/"+fileID+File.separator+file[file.length-1]);
 			try {
 				if (!restored_file.exists()) {
 				    restored_file.createNewFile();
 				}
 				out = new FileOutputStream(restored_file);
-				File restore_dir = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restored/"+fileID);		
+				File restore_dir = new File(home.getAbsolutePath()+"/sdis/files/"+main_server.id+"/restored/"+fileID);		
 				for(int i=0;i<total_chunks;i++)
 				{
 				    File currentFile = new File(restore_dir.getPath(),i+"");
@@ -168,8 +155,8 @@ class RecoveryChannelListener implements Runnable
 		}
 		
 		public void sendGetchunk(byte[] getchunk) throws IOException{
-			InetAddress adr = InetAddress.getByName(control_adr);
-			DatagramPacket packet = new DatagramPacket(getchunk, 0, getchunk.length,adr,control_port);
+			InetAddress adr = InetAddress.getByName(main_server.control_address);
+			DatagramPacket packet = new DatagramPacket(getchunk, 0, getchunk.length,adr,main_server.control_port);
 			socket.send(packet);
 		}
 
@@ -206,7 +193,7 @@ class RecoveryChannelListener implements Runnable
 				byte[] getchunk;
 				try 
 				{
-					getchunk = CreateMessages.createHeader("GETCHUNK", "1.0", server_id, fileID, chunkno,0);
+					getchunk = CreateMessages.createHeader("GETCHUNK", main_server.protocol_version, main_server.id, fileID, chunkno,0);
 					sendGetchunk(getchunk);	
 					//System.out.println("Sent getchunk "+chunkno);
 				} catch (IOException e) 

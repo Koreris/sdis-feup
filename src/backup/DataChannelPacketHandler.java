@@ -6,33 +6,22 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.MulticastSocket;
 import java.util.Arrays;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-
 import javax.swing.filechooser.FileSystemView;
 
 public class DataChannelPacketHandler implements Runnable 
 {
 	DatagramPacket data;
 	DatagramSocket socket;
-	String server_id;
-	Integer storage_capacity;
-	ConcurrentHashMap<String,Integer> records_backup;
-	ConcurrentHashMap<String,Integer> records_store;
-	String control_adr;
-	int control_port;
+	MulticastServer main_server;
+
 	
-	public DataChannelPacketHandler(DatagramPacket packet,String server,ConcurrentHashMap<String,Integer> recbac,ConcurrentHashMap<String,Integer> recsto,DatagramSocket sock, String controladr, int controlport,Integer storage_space) 
-	{
+	public DataChannelPacketHandler(DatagramPacket packet, MulticastServer mainserver, MulticastSocket sock) {
+		main_server=mainserver;
 		data=packet;
-		server_id=server;
-		records_backup=recbac;
-		records_store=recsto;
 		socket=sock;
-		control_adr=controladr;
-		control_port=controlport;
-		storage_capacity=storage_space;
 	}
 
 	@Override
@@ -65,13 +54,13 @@ public class DataChannelPacketHandler implements Runnable
 
 	private void handlePutchunk(String[] headerComponents, byte[] filedata) throws IOException, InterruptedException {
 	
-		if(headerComponents[2].equals(server_id))
+		if(headerComponents[2].equals(main_server.id))
 			return;
 		
 		
 		File home = FileSystemView.getFileSystemView().getHomeDirectory();
-		File peer_directory = new File(home.getAbsolutePath()+"/sdis/files/"+server_id);
-		File restore_directory = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/restore");
+		File peer_directory = new File(home.getAbsolutePath()+"/sdis/files/"+main_server.id);
+		File restore_directory = new File(home.getAbsolutePath()+"/sdis/files/"+main_server.id+"/restore");
 		
 		if(peer_directory.exists()) {
 			long storage_occupied=Utils.checkDirectorySize(peer_directory);
@@ -79,34 +68,44 @@ public class DataChannelPacketHandler implements Runnable
 			if(restore_directory.exists()) {
 				storage_occupied-=Utils.checkDirectorySize(restore_directory);
 			}
-			if(storage_occupied+filedata.length>storage_capacity)
+			if(storage_occupied+filedata.length>main_server.storage_capacity)
 				return;
 		}
-		File chunk = new File(home.getAbsolutePath()+"/sdis/files/"+server_id+"/"+headerComponents[3]+File.separator+headerComponents[4]);
+		File chunk = new File(home.getAbsolutePath()+"/sdis/files/"+main_server.id+"/"+headerComponents[3]+File.separator+headerComponents[4]);
 		
 		if(chunk.exists()) {
 			System.out.println("I already received this chunk before!");
 			return;
 		}
 		
-		//System.out.println("Header component: "+headerComponents[2]+" server id: "+server_id);
-		//System.out.println("headerComponents[1]); //version
-		//System.out.println(headerComponents[3]); //fileID
-		System.out.println("Received chunkno:"+headerComponents[4]);
-		// guardar ficheiro no diretorio headerComponents[3]/headerComponents[4]
 		
-		byte[] stored = CreateMessages.createHeader("STORED", headerComponents[1], server_id, headerComponents[3], Integer.parseInt(headerComponents[4]),0);
-		InetAddress control_addr = InetAddress.getByName(control_adr);
-		DatagramPacket packet = new DatagramPacket(stored,0,stored.length,control_addr,control_port);
+		System.out.println("Received chunkno:"+headerComponents[4]);
+
+	
 		Random delay_gen = new Random();
 		int delay=delay_gen.nextInt(401);
 		Thread.sleep(delay);
+		
+		// BACKUP ENHANCEMENT BEGIN;
+		if(headerComponents[1].equals("2.0")) {
+			if(main_server.volatile_store_records.get(headerComponents[3]+headerComponents[4]) != null && main_server.volatile_store_records.get(headerComponents[3]+headerComponents[4])>=Integer.parseInt(headerComponents[5])) {
+				System.out.println("Backup Enhancement: NOT STORING BECAUSE REQUIRED REP_DEGREE IS: "+headerComponents[5] + " AND PERCEIVED IS " + main_server.volatile_store_records.get(headerComponents[3]+headerComponents[4]));
+				return;
+			}
+			main_server.volatile_store_records.put(headerComponents[3]+headerComponents[4],1);
+		}
+		// BACKUP ENHANCEMENT END;
+		
+		System.out.println("Storing chunkno:"+headerComponents[4]);
+		byte[] stored = CreateMessages.createHeader("STORED", headerComponents[1], main_server.id, headerComponents[3], Integer.parseInt(headerComponents[4]),0);
+		InetAddress control_addr = InetAddress.getByName(main_server.control_address);
+		DatagramPacket packet = new DatagramPacket(stored,0,stored.length,control_addr,main_server.control_port);
 		socket.send(packet);
-		records_store.put(headerComponents[3]+":"+headerComponents[4]+":"+filedata.length+":"+headerComponents[5], 1);
+		main_server.records_store.put(headerComponents[3]+":"+headerComponents[4]+":"+filedata.length+":"+headerComponents[5], 1);
 		
 		FileOutputStream out;
 		try {
-			File newfile = new File("/"+home.getAbsolutePath()+"/sdis/files/"+server_id+"/"+headerComponents[3]+File.separator+headerComponents[4]);
+			File newfile = new File("/"+home.getAbsolutePath()+"/sdis/files/"+main_server.id+"/"+headerComponents[3]+File.separator+headerComponents[4]);
 			newfile.getParentFile().mkdirs(); // correct!
 			if (!newfile.exists()) {
 			    newfile.createNewFile();
@@ -115,7 +114,6 @@ public class DataChannelPacketHandler implements Runnable
 			out.write(filedata);
 			out.close();
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
