@@ -52,7 +52,14 @@ public class ControlChannelPacketHandler implements Runnable{
 	private void handleRemoved(String[] headerComponents) {
 		if(headerComponents[2].equals(main_server.id))
 			return;
-
+		
+		Integer backup_rep_degree=main_server.records_backup.get(headerComponents[3]+":"+headerComponents[4]);
+		if(backup_rep_degree!=null) {
+			main_server.records_backup.put(headerComponents[3]+":"+headerComponents[4],backup_rep_degree.intValue()-1);
+			main_server.records_backup.remove(headerComponents[3]+":"+headerComponents[4]+":"+headerComponents[2]);
+			return;
+		}
+		
 		File home = FileSystemView.getFileSystemView().getHomeDirectory();
 		Path chunkpath = Paths.get(home.getAbsolutePath()+"/sdis/files/"+main_server.id+"/"+headerComponents[3]+File.separator+headerComponents[4]);
 		int chunk_size=(int)chunkpath.toFile().length();

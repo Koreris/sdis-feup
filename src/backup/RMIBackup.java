@@ -9,4 +9,5 @@ public interface RMIBackup extends Remote
 	String delete(String filename) throws RemoteException;
 	String restore(String filename) throws RemoteException;
 	String reclaim(Integer space) throws RemoteException;
+	String state() throws RemoteException;
 }

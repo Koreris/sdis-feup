@@ -143,11 +143,74 @@ public class MulticastServer
 		rmi_registry.bind(access_point, stub);
 	}
 	
+	public String getWhoStored(String fileID,String chunkNo) {
+		String whostored="";
+		for (String key : records_backup.keySet()) 
+		{
+			String[] keyComponents = key.split(":");
+			
+			if(!keyComponents[1].equals(chunkNo) || !keyComponents[0].equals(fileID) || keyComponents.length!=3)
+				continue;
+			whostored+=" "+keyComponents[2]+" ";
+		}
+		return whostored;
+	}
+	public String getChunkInfo(String fileID) {
+		String state="";
+		for (String key : records_backup.keySet()) 
+		{
+			String[] keyComponents = key.split(":");
+			
+			if(!keyComponents[0].equals(fileID) || keyComponents.length!=2)
+				continue;
+			try {
+				Integer.parseInt(keyComponents[1]);
+				state+="CHUNK INFO\nFileID: "+keyComponents[0]+"\n";
+				state+="Who Stored:"+getWhoStored(keyComponents[0],keyComponents[1])+"\n";
+				state+="ChunkNo: "+keyComponents[1]+"\nPerceivedReplicationDegree: "+records_backup.get(key)+"\n\n";
+			}
+			catch(Exception e) {}
+		}
+		return state;
+	}
+	
+	public String getState() {
+		String state="";
+		state+="\nBACKUP RECORDS\n\n";
+		for (String key : records_backup.keySet()) 
+		{
+			String[] keyComponents = key.split(":");
+			if(keyComponents.length==2) {
+				try {
+					Integer.parseInt(keyComponents[1]);
+					continue;
+				}
+				catch(NumberFormatException e) {
+					state+="FILE INFO\nFileID: "+keyComponents[1]+"\n";
+					state+="File: "+keyComponents[0]+ "\nDesired Replication Degree: "+records_backup.get(key)+"\n\n";
+					state+=getChunkInfo(keyComponents[1]);
+				}
+			}
+		}
+		state+="STORED RECORDS\n\n";
+		for (String key : records_store.keySet()) 
+		{
+			String[] keyComponents = key.split(":");
+			if(keyComponents.length==2) {
+				continue;
+			}
+			state+="STORED CHUNK INFO\nFileID: "+keyComponents[0]+"\n";
+			state+="ChunkNo: "+keyComponents[1]+" ChunkSize: "+keyComponents[2]+ "\nPerceivedReplicationDegree: "+records_store.get(key)+"\n\n";
+		}
+		return state;
+	}
 	
 	public static void main(String[] args) throws IOException, AlreadyBoundException 
 	{
 		MulticastServer serv = new MulticastServer(args[0],args[1],args[2],args[3],Integer.parseInt(args[4]),args[5],Integer.parseInt(args[6]),args[7],Integer.parseInt(args[8]),Integer.parseInt(args[9]));
 		serv.startUp();
 	}
+
+	
 
 }

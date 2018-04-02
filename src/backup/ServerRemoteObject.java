@@ -52,6 +52,20 @@ public class ServerRemoteObject implements RMIBackup {
 		}
 		return "Reclaim initiated";
 	}
+
+	@Override
+	public String state() throws RemoteException {
+		String state = "state retrieval failed";
+		try
+		{
+			state = peer.getState();
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		return state;
+	}
 	
 
 
