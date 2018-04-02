@@ -4,7 +4,10 @@ import java.rmi.NotBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.io.*;
+import java.net.InetAddress;
 import java.util.*;
+
+import javax.swing.filechooser.FileSystemView;
 
 public class MulticastClient 
 {	
@@ -15,14 +18,17 @@ public class MulticastClient
 	}
 	
 	public static void main(String[] args) throws IOException, NotBoundException 
-	{
+	{	
+		 File home = FileSystemView.getFileSystemView().getHomeDirectory();
+	 	 System.setProperty("java.rmi.server.codebase","file:\\"+home.getAbsolutePath()+"\\");
+	 	 System.setProperty("java.security.policy","security.policy");
 		 String response;
-		 if(args.length!=3 && args.length!=4) {
+		 if(args.length!=3 && args.length!=4 && args.length!=2) {
 			 System.out.println("Usage: <RMI object> <sub_protocol> <opnd_1> [opnd_2(replication degree on backup)]");
 		 }
-			 
-		 final Registry registry = LocateRegistry.getRegistry("127.0.0.1",1098);
-         final RMIBackup stub = (RMIBackup) registry.lookup(args[0]);
+		 String[] argComponents = args[0].split("/");
+		 final Registry registry = LocateRegistry.getRegistry(InetAddress.getByName(argComponents[2]).getHostAddress(),1099);
+         final RMIBackup stub = (RMIBackup) registry.lookup(argComponents[3]);
          if(args[1].equals("backup"))
         	 response = stub.backup(args[2], Integer.parseInt(args[3]));
          else if(args[1].equals("delete"))

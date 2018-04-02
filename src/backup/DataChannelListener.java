@@ -146,8 +146,8 @@ class DataChannelListener implements Runnable
 			try {
 				fileID = Utils.createFileID(file_to_backup);
 				if(main_server.records_backup.containsKey(file_to_backup+":"+fileID)) {
-					System.out.println("Already backed up this file!");
-					return;
+					//System.out.println("Already backed up this file!");
+					//return;
 				}
 				main_server.records_backup.put(file_to_backup+":"+fileID, rep_degree);
 				analyzeFile();
@@ -201,6 +201,8 @@ class DataChannelListener implements Runnable
 			try {
 				main_server.records_backup.put(fileID+":"+sent_chunks, 0);
 				while(nr_tries<5) {
+					
+					System.out.println(Thread.currentThread().getName()+" - Sending chunk :"+sent_chunks+" Try: "+(nr_tries+1));
 					DatagramPacket packet = new DatagramPacket(chunk, 0, chunk.length,InetAddress.getByName(main_server.data_address),main_server.data_port);
 					socket.send(packet);
 					Thread.sleep(1000);

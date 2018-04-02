@@ -14,6 +14,7 @@ import javax.swing.filechooser.FileSystemView;
 import java.beans.XMLDecoder;
 import java.beans.XMLEncoder;
 import java.io.*;
+import java.net.InetAddress;
 
 public class MulticastServer
 {
@@ -132,15 +133,14 @@ public class MulticastServer
 		rmi_object = new ServerRemoteObject(this);
 		RMIBackup stub = (RMIBackup) UnicastRemoteObject.exportObject(rmi_object, 0);
 		// Bind the remote object's stub in the registry
-		try 
-		{
-			rmi_registry = LocateRegistry.createRegistry(1098);
+		try{
+			rmi_registry = LocateRegistry.createRegistry(1099);
 		}
-		catch(Exception e) 
-		{
-			rmi_registry = LocateRegistry.getRegistry(1098);
+		catch(Exception e){
+			rmi_registry = LocateRegistry.getRegistry();
 		}
-		rmi_registry.bind(access_point, stub);
+	
+		rmi_registry.rebind(access_point, stub);
 	}
 	
 	public String getWhoStored(String fileID,String chunkNo) {
@@ -207,6 +207,10 @@ public class MulticastServer
 	
 	public static void main(String[] args) throws IOException, AlreadyBoundException 
 	{
+		File home = FileSystemView.getFileSystemView().getHomeDirectory();
+
+	 	System.setProperty("java.rmi.server.codebase","file:\\"+home.getAbsolutePath()+"\\");
+	 	System.setProperty("java.security.policy","security.policy");
 		MulticastServer serv = new MulticastServer(args[0],args[1],args[2],args[3],Integer.parseInt(args[4]),args[5],Integer.parseInt(args[6]),args[7],Integer.parseInt(args[8]),Integer.parseInt(args[9]));
 		serv.startUp();
 	}
