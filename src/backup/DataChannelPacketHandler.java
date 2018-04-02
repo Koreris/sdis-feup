@@ -9,6 +9,9 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+
 import javax.swing.filechooser.FileSystemView;
 
 public class DataChannelPacketHandler implements Runnable 
@@ -16,12 +19,15 @@ public class DataChannelPacketHandler implements Runnable
 	DatagramPacket data;
 	DatagramSocket socket;
 	MulticastServer main_server;
+	ConcurrentHashMap <String,Integer> records_reclaim;
+
 
 	
-	public DataChannelPacketHandler(DatagramPacket packet, MulticastServer mainserver, MulticastSocket sock) {
+	public DataChannelPacketHandler(DatagramPacket packet, MulticastServer mainserver, MulticastSocket sock, ConcurrentHashMap<String, Integer> records_reclaim2) {
 		main_server=mainserver;
 		data=packet;
 		socket=sock;
+		records_reclaim = records_reclaim2;
 	}
 
 	@Override
@@ -56,7 +62,8 @@ public class DataChannelPacketHandler implements Runnable
 	
 		if(headerComponents[2].equals(main_server.id))
 			return;
-		
+		if(records_reclaim.containsKey(headerComponents[3]))
+			return;
 		
 		File home = FileSystemView.getFileSystemView().getHomeDirectory();
 		File peer_directory = new File(home.getAbsolutePath()+"/sdis/files/"+main_server.id);
@@ -101,7 +108,8 @@ public class DataChannelPacketHandler implements Runnable
 		InetAddress control_addr = InetAddress.getByName(main_server.control_address);
 		DatagramPacket packet = new DatagramPacket(stored,0,stored.length,control_addr,main_server.control_port);
 		socket.send(packet);
-		main_server.records_store.put(headerComponents[3]+":"+headerComponents[4]+":"+filedata.length+":"+headerComponents[5], 1);
+		main_server.records_store.put(headerComponents[3]+":"+headerComponents[4]+":"+filedata.length, 1);
+		main_server.records_store.put(headerComponents[3]+":"+headerComponents[4],Integer.parseInt(headerComponents[5]));
 		
 		FileOutputStream out;
 		try {

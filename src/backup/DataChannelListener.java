@@ -10,7 +10,9 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import javax.swing.filechooser.FileSystemView;
@@ -21,7 +23,8 @@ class DataChannelListener implements Runnable
 	private MulticastSocket socket;
 	private MulticastServer main_server;
 	private ThreadPoolExecutor data_pool;
-
+	ConcurrentHashMap <String,Integer> records_reclaim;
+	ScheduledThreadPoolExecutor cleanup_records;
 	final static int MAX_PACKET_SIZE=64096;
 	
 	public DataChannelListener(MulticastServer multicastServer) throws UnknownHostException, IOException {
@@ -30,6 +33,8 @@ class DataChannelListener implements Runnable
 		socket.joinGroup(InetAddress.getByName(main_server.data_address));
 		LinkedBlockingQueue<Runnable> queue= new LinkedBlockingQueue<Runnable>();
 		data_pool = new ThreadPoolExecutor(5, 20, 10, TimeUnit.SECONDS, queue);
+		records_reclaim = new ConcurrentHashMap<String,Integer>();
+		cleanup_records = new ScheduledThreadPoolExecutor(1);
 	}
 
 	public void run()
@@ -40,7 +45,7 @@ class DataChannelListener implements Runnable
 			DatagramPacket packet = new DatagramPacket(buf, buf.length);
 			try {
 				socket.receive(packet);
-				data_pool.execute(new DataChannelPacketHandler(packet,main_server,socket));
+				data_pool.execute(new DataChannelPacketHandler(packet,main_server,socket,records_reclaim));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -63,7 +68,7 @@ class DataChannelListener implements Runnable
 		int space_to_occupy;
 		public ReclaimService(Integer s) 
 		{
-			space_to_occupy=s;
+			space_to_occupy=s*1000;
 		}
 
 		@Override
@@ -91,11 +96,17 @@ class DataChannelListener implements Runnable
 					for (String key : main_server.records_store.keySet()) 
 					{
 						String[] keyComponents = key.split(":");
+						if(keyComponents.length==2) {
+							main_server.records_store.remove(key);
+							continue;
+						}
 						int file_size = Integer.parseInt(keyComponents[2]);
 						accumulator=accumulator+file_size;
 						File to_delete= new File(peer_directory+"/"+keyComponents[0]+File.separator+keyComponents[1]);
 						to_delete.delete();
 						main_server.records_store.remove(key);
+						records_reclaim.put(keyComponents[0],-1);
+						cleanup_records.schedule(()->records_reclaim.remove(keyComponents[0]), 5, TimeUnit.SECONDS);
 						try {
 							byte[] removed = CreateMessages.createHeader("REMOVED","1.0", main_server.id, keyComponents[0], Integer.parseInt(keyComponents[1]), 0);
 							DatagramPacket packet = new DatagramPacket(removed, 0, removed.length,InetAddress.getByName(main_server.control_address),main_server.control_port);
