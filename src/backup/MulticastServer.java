@@ -14,7 +14,6 @@ import javax.swing.filechooser.FileSystemView;
 import java.beans.XMLDecoder;
 import java.beans.XMLEncoder;
 import java.io.*;
-import java.net.InetAddress;
 
 public class MulticastServer
 {
@@ -62,14 +61,33 @@ public class MulticastServer
 
 	private void startUp() 
 	{
-		//ExecuteOnHoldCommands
+		executeOnHoldCommands();
 		loadFiles();
 		new Thread(control_thread).start();
 		new Thread(data_thread).start();
 		new Thread(recovery_thread).start();
 		record_keeper.scheduleAtFixedRate(new FileMaintenanceService(), 1,5, TimeUnit.SECONDS);
 	}
-
+	
+	public void executeOnHoldCommands(){
+		try{
+		File home = FileSystemView.getFileSystemView().getHomeDirectory();
+		File commands = new File(home.getAbsolutePath()+"/sdis/files/"+id+File.separator+"onhold_delete.txt");
+		FileReader fileReader = new FileReader(commands);
+		BufferedReader bufferedReader = new BufferedReader(fileReader);
+		String line;
+		while ((line = bufferedReader.readLine()) != null) {
+			String[] splits = line.split(" ");
+			Utils.deleteFile(splits[1], id, records_backup, records_store);
+		}
+		fileReader.close();
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+		
+	}
+	
 	@SuppressWarnings("unchecked")
 	public void loadFiles() {
 		File home = FileSystemView.getFileSystemView().getHomeDirectory();
@@ -104,9 +122,11 @@ public class MulticastServer
 			File home = FileSystemView.getFileSystemView().getHomeDirectory();
 			File file_backup = new File (home.getAbsolutePath()+"/sdis/files/"+id+File.separator+"backup_records");
 			File file_stored = new File (home.getAbsolutePath()+"/sdis/files/"+id+File.separator+"stored_records");
+			File file_delete = new File (home.getAbsolutePath()+"/sdis/files/"+id+File.separator+"onhold_delete.txt");
 			try {
 				file_backup.delete();
 				file_stored.delete();
+				file_delete.delete();
 				file_backup.getParentFile().mkdirs(); // correct!
 				file_backup.createNewFile();
 				file_stored.createNewFile();

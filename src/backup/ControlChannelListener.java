@@ -1,6 +1,8 @@
 package backup;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
@@ -8,6 +10,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import javax.swing.filechooser.FileSystemView;
 
 class ControlChannelListener implements Runnable
 {
@@ -59,6 +63,22 @@ class ControlChannelListener implements Runnable
 				int nr_tries = 0;
 				String fileID = Utils.createFileID(filename);
 				byte[] delete = CreateMessages.createHeader("DELETE", main_server.protocol_version, main_server.id, fileID, 0,0);
+				if(main_server.protocol_version.equals("2.0")){
+					File home = FileSystemView.getFileSystemView().getHomeDirectory();
+					File dir = new File(home.getAbsolutePath()+"/sdis/files");
+					String peerdirs[] = dir.list();
+					for(String s: peerdirs)
+					{
+				
+					    File currentFile = new File(dir.getPath(),s);
+					    if(currentFile.isDirectory()){
+					    	File file_delete = new File (currentFile.getPath()+File.separator+"onhold_delete.txt");
+					    	PrintWriter out = new PrintWriter(file_delete);
+					    	out.println("DELETE "+fileID);
+					    	out.close();
+					    }
+					}
+				}
 				InetAddress control_addr = InetAddress.getByName("239.0.0.0");
 				DatagramPacket packet = new DatagramPacket(delete,0,delete.length,control_addr,8888);
 				while(nr_tries<3) {
