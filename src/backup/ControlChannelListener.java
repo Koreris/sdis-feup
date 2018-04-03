@@ -79,7 +79,7 @@ class ControlChannelListener implements Runnable
 					    }
 					}
 				}
-				InetAddress control_addr = InetAddress.getByName("239.0.0.0");
+				InetAddress control_addr = InetAddress.getByName(main_server.control_address);
 				DatagramPacket packet = new DatagramPacket(delete,0,delete.length,control_addr,8888);
 				while(nr_tries<3) {
 					socket.send(packet);

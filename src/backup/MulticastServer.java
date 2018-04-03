@@ -71,19 +71,19 @@ public class MulticastServer
 	
 	public void executeOnHoldCommands(){
 		try{
-		File home = FileSystemView.getFileSystemView().getHomeDirectory();
-		File commands = new File(home.getAbsolutePath()+"/sdis/files/"+id+File.separator+"onhold_delete.txt");
-		FileReader fileReader = new FileReader(commands);
-		BufferedReader bufferedReader = new BufferedReader(fileReader);
-		String line;
-		while ((line = bufferedReader.readLine()) != null) {
-			String[] splits = line.split(" ");
-			Utils.deleteFile(splits[1], id, records_backup, records_store);
-		}
-		fileReader.close();
+			File home = FileSystemView.getFileSystemView().getHomeDirectory();
+			File commands = new File(home.getAbsolutePath()+"/sdis/files/"+id+File.separator+"onhold_delete.txt");
+			FileReader fileReader = new FileReader(commands);
+			BufferedReader bufferedReader = new BufferedReader(fileReader);
+			String line;
+			while ((line = bufferedReader.readLine()) != null) {
+				String[] splits = line.split(" ");
+				Utils.deleteFile(splits[1], id, records_backup, records_store);
+			}
+			fileReader.close();
 		}
 		catch(Exception e){
-			e.printStackTrace();
+		
 		}
 		
 	}
