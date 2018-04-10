@@ -129,7 +129,7 @@ class RecoveryChannelListener implements Runnable
 		public void mergeChunksToFile(){
 			main_server.records_restore.remove(fileID);
 			FileOutputStream out;
-			String[] file = file_to_restore.split("\\\\");
+			String[] file = file_to_restore.split("/");
 			File home = FileSystemView.getFileSystemView().getHomeDirectory();
 		
 			File restored_file = new File(home.getAbsolutePath()+"/sdis/files/"+main_server.id+"/restored/"+fileID+File.separator+file[file.length-1]);

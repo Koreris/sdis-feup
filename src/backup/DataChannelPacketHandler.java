@@ -109,7 +109,7 @@ public class DataChannelPacketHandler implements Runnable
 		DatagramPacket packet = new DatagramPacket(stored,0,stored.length,control_addr,main_server.control_port);
 		socket.send(packet);
 		main_server.records_store.put(headerComponents[3]+":"+headerComponents[4]+":"+filedata.length, 1);
-		main_server.records_store.put(headerComponents[3]+":"+headerComponents[4],Integer.parseInt(headerComponents[5]));
+		main_server.records_store.put(headerComponents[3]+":"+headerComponents[4],Integer.parseInt(headerComponents[5].trim()));
 		
 		FileOutputStream out;
 		try {
